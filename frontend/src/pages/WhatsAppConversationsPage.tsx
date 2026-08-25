@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { apiFetch } from '../api/client';
 import { useAuth } from '../contexts/AuthContext';
 import {
   WhatsAppConversation, WhatsAppMessage, WhatsAppResponseCategory
@@ -35,7 +36,7 @@ export const WhatsAppConversationsPage: React.FC = () => {
   const fetchConversations = async () => {
     try {
       setLoading(true);
-      const res = await fetch('/api/v1/whatsapp/conversations', {
+      const res = await apiFetch('/api/v1/whatsapp/conversations', {
         headers: { Authorization: `Bearer ${token}` }
       });
       if (res.ok) {
@@ -133,7 +134,7 @@ export const WhatsAppConversationsPage: React.FC = () => {
 
     try {
       setIsSimulating(true);
-      const res = await fetch('/api/v1/whatsapp/conversations/simulate-reply', {
+      const res = await apiFetch('/api/v1/whatsapp/conversations/simulate-reply', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

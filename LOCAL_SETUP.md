@@ -82,6 +82,18 @@ Open `http://localhost:5173` in your browser.
 
 The Vite development server proxies `/api` requests to `http://localhost:8000`. Keep the backend running while using the frontend.
 
+For a deployed frontend on another port, the app automatically uses the same server on port `8000`. To use a different backend URL, create `frontend/.env.production` before building:
+
+```env
+VITE_API_URL=http://your-server-host:8000/api/v1
+```
+
+Then rebuild and restart the frontend server:
+
+```powershell
+npm run build
+```
+
 ## Test Login
 
 After running `recreate_db`, use:

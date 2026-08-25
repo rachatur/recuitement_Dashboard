@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { apiFetch } from '../api/client';
 import { useAuth } from '../contexts/AuthContext';
 import {
   Candidate, CandidateStatus, WhatsAppConsentStatus,
@@ -109,7 +110,7 @@ export const CandidatesPage: React.FC<CandidatesPageProps> = ({ onViewCandidateP
       const data = new FormData();
       data.append('file', file);
 
-      const res = await fetch('/api/v1/candidates/extract-cv', {
+      const res = await apiFetch('/api/v1/candidates/extract-cv', {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` },
         body: data
@@ -172,7 +173,7 @@ export const CandidatesPage: React.FC<CandidatesPageProps> = ({ onViewCandidateP
         skills: Array.isArray(formData.skills) ? formData.skills : formData.skills.split(',').map((s: string) => s.trim()).filter(Boolean)
       };
 
-      const res = await fetch('/api/v1/candidates', {
+      const res = await apiFetch('/api/v1/candidates', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -206,7 +207,7 @@ export const CandidatesPage: React.FC<CandidatesPageProps> = ({ onViewCandidateP
       bulkFiles.forEach(f => data.append('files', f));
       data.append('duplicate_action', duplicateAction);
 
-      const res = await fetch('/api/v1/candidates/bulk-upload', {
+      const res = await apiFetch('/api/v1/candidates/bulk-upload', {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` },
         body: data

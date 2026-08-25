@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { apiFetch } from '../api/client';
 import { useAuth } from '../contexts/AuthContext';
 import { WhatsAppOptOut } from '../types';
 import {
@@ -21,7 +22,7 @@ export const WhatsAppOptOutsPage: React.FC = () => {
   const fetchOptOuts = async () => {
     try {
       setLoading(true);
-      const res = await fetch('/api/v1/whatsapp/opt-outs', {
+      const res = await apiFetch('/api/v1/whatsapp/opt-outs', {
         headers: { Authorization: `Bearer ${token}` }
       });
       if (res.ok) {
@@ -43,7 +44,7 @@ export const WhatsAppOptOutsPage: React.FC = () => {
     e.preventDefault();
     try {
       setIsSubmitting(true);
-      const res = await fetch('/api/v1/whatsapp/opt-outs', {
+      const res = await apiFetch('/api/v1/whatsapp/opt-outs', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

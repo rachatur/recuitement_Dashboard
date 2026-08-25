@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { apiFetch } from '../api/client';
 import { useAuth } from '../contexts/AuthContext';
 import {
   WhatsAppCampaign, WhatsAppTemplate, JobRequirement,
@@ -53,7 +54,7 @@ export const WhatsAppCampaignsPage: React.FC<WhatsAppCampaignsPageProps> = ({
   const fetchCampaigns = async () => {
     try {
       setLoading(true);
-      const res = await fetch('/api/v1/whatsapp/campaigns', {
+      const res = await apiFetch('/api/v1/whatsapp/campaigns', {
         headers: { Authorization: `Bearer ${token}` }
       });
       if (res.ok) {
@@ -69,7 +70,7 @@ export const WhatsAppCampaignsPage: React.FC<WhatsAppCampaignsPageProps> = ({
 
   const fetchTemplates = async () => {
     try {
-      const res = await fetch('/api/v1/whatsapp/templates', {
+      const res = await apiFetch('/api/v1/whatsapp/templates', {
         headers: { Authorization: `Bearer ${token}` }
       });
       if (res.ok) {
@@ -86,7 +87,7 @@ export const WhatsAppCampaignsPage: React.FC<WhatsAppCampaignsPageProps> = ({
 
   const fetchRequirements = async () => {
     try {
-      const res = await fetch('/api/v1/requirements?position_status=OPEN', {
+      const res = await apiFetch('/api/v1/requirements?position_status=OPEN', {
         headers: { Authorization: `Bearer ${token}` }
       });
       if (res.ok) {
@@ -130,7 +131,7 @@ export const WhatsAppCampaignsPage: React.FC<WhatsAppCampaignsPageProps> = ({
 
     try {
       setIsValidating(true);
-      const res = await fetch('/api/v1/whatsapp/campaigns/validate-recipients', {
+      const res = await apiFetch('/api/v1/whatsapp/campaigns/validate-recipients', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -173,7 +174,7 @@ export const WhatsAppCampaignsPage: React.FC<WhatsAppCampaignsPageProps> = ({
         scheduled_date: isScheduled && scheduledDate ? new Date(scheduledDate).toISOString() : null
       };
 
-      const res = await fetch('/api/v1/whatsapp/campaigns', {
+      const res = await apiFetch('/api/v1/whatsapp/campaigns', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

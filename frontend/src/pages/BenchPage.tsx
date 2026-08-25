@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { apiFetch } from '../api/client';
 import { useAuth } from '../contexts/AuthContext';
 import {
   BenchCandidate, BenchStatus, JobRequirement, RequirementMatchResult, RequirementMatchCandidate
@@ -65,7 +66,7 @@ export const BenchPage: React.FC<BenchPageProps> = ({
 
   const fetchRequirements = async () => {
     try {
-      const res = await fetch('/api/v1/requirements?position_status=OPEN', {
+      const res = await apiFetch('/api/v1/requirements?position_status=OPEN', {
         headers: { Authorization: `Bearer ${token}` }
       });
       if (res.ok) {

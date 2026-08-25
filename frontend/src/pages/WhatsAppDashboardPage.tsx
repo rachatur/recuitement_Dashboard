@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { apiFetch } from '../api/client';
 import { useAuth } from '../contexts/AuthContext';
 import { WhatsAppDashboardSummary } from '../types';
 import {
@@ -23,7 +24,7 @@ export const WhatsAppDashboardPage: React.FC<WhatsAppDashboardPageProps> = ({
   const fetchOutreachDashboard = async () => {
     try {
       setLoading(true);
-      const res = await fetch('/api/v1/whatsapp/dashboard', {
+      const res = await apiFetch('/api/v1/whatsapp/dashboard', {
         headers: { Authorization: `Bearer ${token}` }
       });
       if (res.ok) {

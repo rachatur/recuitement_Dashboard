@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { apiFetch } from '../api/client';
 import { useAuth } from '../contexts/AuthContext';
 import { WhatsAppTemplate } from '../types';
 import {
@@ -22,7 +23,7 @@ export const WhatsAppTemplatesPage: React.FC = () => {
   const fetchTemplates = async () => {
     try {
       setLoading(true);
-      const res = await fetch('/api/v1/whatsapp/templates', {
+      const res = await apiFetch('/api/v1/whatsapp/templates', {
         headers: { Authorization: `Bearer ${token}` }
       });
       if (res.ok) {
@@ -47,7 +48,7 @@ export const WhatsAppTemplatesPage: React.FC = () => {
     e.preventDefault();
     try {
       setIsSubmitting(true);
-      const res = await fetch('/api/v1/whatsapp/templates', {
+      const res = await apiFetch('/api/v1/whatsapp/templates', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

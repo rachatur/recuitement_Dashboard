@@ -1,6 +1,20 @@
 import axios from 'axios';
 
-export const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1';
+const defaultApiBaseUrl = window.location.port === '5173'
+  ? '/api/v1'
+  : `${window.location.protocol}//${window.location.hostname}:8000/api/v1`;
+
+export const API_BASE_URL = import.meta.env.VITE_API_URL || defaultApiBaseUrl;
+
+export const apiUrl = (path: string): string => {
+  const normalizedPath = path.startsWith('/api/v1')
+    ? path.slice('/api/v1'.length)
+    : path.startsWith('/') ? path : `/${path}`;
+  return `${API_BASE_URL.replace(/\/$/, '')}${normalizedPath}`;
+};
+
+export const apiFetch = (path: string, init?: RequestInit): Promise<Response> =>
+  fetch(apiUrl(path), init);
 
 const api = axios.create({
   baseURL: API_BASE_URL,

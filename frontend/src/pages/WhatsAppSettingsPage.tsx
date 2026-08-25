@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { apiFetch } from '../api/client';
 import { useAuth } from '../contexts/AuthContext';
 import { WhatsAppIntegrationSettings } from '../types';
 import {
@@ -19,7 +20,7 @@ export const WhatsAppSettingsPage: React.FC = () => {
   const fetchSettings = async () => {
     try {
       setLoading(true);
-      const res = await fetch('/api/v1/whatsapp/settings', {
+      const res = await apiFetch('/api/v1/whatsapp/settings', {
         headers: { Authorization: `Bearer ${token}` }
       });
       if (res.ok) {
@@ -43,7 +44,7 @@ export const WhatsAppSettingsPage: React.FC = () => {
 
     try {
       setIsSaving(true);
-      const res = await fetch('/api/v1/whatsapp/settings', {
+      const res = await apiFetch('/api/v1/whatsapp/settings', {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -68,7 +69,7 @@ export const WhatsAppSettingsPage: React.FC = () => {
     try {
       setIsTesting(true);
       setTestResult(null);
-      const res = await fetch('/api/v1/whatsapp/test-connection', {
+      const res = await apiFetch('/api/v1/whatsapp/test-connection', {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` }
       });
