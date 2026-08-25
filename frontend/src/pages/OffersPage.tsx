@@ -208,7 +208,7 @@ export const OffersPage: React.FC = () => {
                       <div className="text-[10px] text-slate-400">{o.client_name}</div>
                     </td>
                     <td className="px-5 py-3.5 font-mono font-bold text-brand-400">
-                      ${o.offered_ctc.toLocaleString()} {o.currency}
+                      ${(o.offered_ctc || o.annual_ctc || 0).toLocaleString()} {o.currency}
                     </td>
                     <td className="px-5 py-3.5 font-mono text-slate-300">
                       +${o.joining_bonus.toLocaleString()}

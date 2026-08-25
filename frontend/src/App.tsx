@@ -6,7 +6,17 @@ import { LoginPage } from './pages/LoginPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { ClientsPage } from './pages/ClientsPage';
 import { RequirementsPage } from './pages/RequirementsPage';
+import { PositionTrackingPage } from './pages/PositionTrackingPage';
 import { CandidatesPage } from './pages/CandidatesPage';
+import { CandidateProfilePage } from './pages/CandidateProfilePage';
+import { BenchPage } from './pages/BenchPage';
+import { WhatsAppDashboardPage } from './pages/WhatsAppDashboardPage';
+import { WhatsAppCampaignsPage } from './pages/WhatsAppCampaignsPage';
+import { WhatsAppTemplatesPage } from './pages/WhatsAppTemplatesPage';
+import { WhatsAppConversationsPage } from './pages/WhatsAppConversationsPage';
+import { WhatsAppOptOutsPage } from './pages/WhatsAppOptOutsPage';
+import { WhatsAppSettingsPage } from './pages/WhatsAppSettingsPage';
+import { HistoryPage } from './pages/HistoryPage';
 import { SubmissionsPage } from './pages/SubmissionsPage';
 import { InterviewsPage } from './pages/InterviewsPage';
 import { OffersPage } from './pages/OffersPage';
@@ -20,11 +30,16 @@ const AppContent: React.FC = () => {
   const { isAuthenticated, isLoading } = useAuth();
   const [activeTab, setActiveTab] = useState<string>('dashboard');
 
+  // Cross-page navigation context state
+  const [selectedCandidateId, setSelectedCandidateId] = useState<string | null>(null);
+  const [campaignCandidateIds, setCampaignCandidateIds] = useState<string[]>([]);
+  const [campaignRequirementId, setCampaignRequirementId] = useState<string | undefined>(undefined);
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center text-slate-100">
-        <RefreshCw className="w-10 h-10 text-brand-500 animate-spin mb-4" />
-        <p className="text-sm font-semibold text-slate-400">Loading RecruitFlow Platform...</p>
+        <RefreshCw className="w-10 h-10 text-emerald-500 animate-spin mb-4" />
+        <p className="text-sm font-semibold text-slate-400">Loading RecruitFlow Enterprise Platform...</p>
       </div>
     );
   }
@@ -32,6 +47,17 @@ const AppContent: React.FC = () => {
   if (!isAuthenticated) {
     return <LoginPage />;
   }
+
+  const handleViewCandidateProfile = (candidateId: string) => {
+    setSelectedCandidateId(candidateId);
+    setActiveTab('candidate-profile');
+  };
+
+  const handleNavigateToCampaigns = (candidateIds: string[], requirementId?: string) => {
+    setCampaignCandidateIds(candidateIds);
+    setCampaignRequirementId(requirementId);
+    setActiveTab('whatsapp-campaigns');
+  };
 
   const renderActivePage = () => {
     switch (activeTab) {
@@ -41,8 +67,62 @@ const AppContent: React.FC = () => {
         return <ClientsPage />;
       case 'requirements':
         return <RequirementsPage />;
+      case 'position-tracking':
+        return (
+          <PositionTrackingPage
+            onNavigateToCampaigns={handleNavigateToCampaigns}
+          />
+        );
       case 'candidates':
-        return <CandidatesPage />;
+        return (
+          <CandidatesPage
+            onViewCandidateProfile={handleViewCandidateProfile}
+          />
+        );
+      case 'candidate-profile':
+        return selectedCandidateId ? (
+          <CandidateProfilePage
+            candidateId={selectedCandidateId}
+            onBack={() => setActiveTab('candidates')}
+          />
+        ) : (
+          <CandidatesPage onViewCandidateProfile={handleViewCandidateProfile} />
+        );
+      case 'bench':
+        return (
+          <BenchPage
+            onNavigateToCampaigns={handleNavigateToCampaigns}
+            onViewCandidateProfile={handleViewCandidateProfile}
+          />
+        );
+      case 'whatsapp-dashboard':
+        return (
+          <WhatsAppDashboardPage
+            onNavigateToCampaigns={() => setActiveTab('whatsapp-campaigns')}
+            onNavigateToConversations={() => setActiveTab('whatsapp-conversations')}
+          />
+        );
+      case 'whatsapp-campaigns':
+        return (
+          <WhatsAppCampaignsPage
+            initialCandidateIds={campaignCandidateIds}
+            initialRequirementId={campaignRequirementId}
+            onClearInitialParams={() => {
+              setCampaignCandidateIds([]);
+              setCampaignRequirementId(undefined);
+            }}
+          />
+        );
+      case 'whatsapp-templates':
+        return <WhatsAppTemplatesPage />;
+      case 'whatsapp-conversations':
+        return <WhatsAppConversationsPage />;
+      case 'whatsapp-opt-outs':
+        return <WhatsAppOptOutsPage />;
+      case 'whatsapp-settings':
+        return <WhatsAppSettingsPage />;
+      case 'history':
+        return <HistoryPage />;
       case 'submissions':
         return <SubmissionsPage />;
       case 'interviews':

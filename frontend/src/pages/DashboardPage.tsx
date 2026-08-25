@@ -5,7 +5,8 @@ import { StatCard } from '../components/common/StatCard';
 import {
   Briefcase, Users, FileText, CheckSquare, Send,
   MessageSquare, Calendar, Award, FileCheck2, UserCheck,
-  TrendingUp, Clock, Filter, Sparkles, ArrowRight, RefreshCw
+  TrendingUp, Clock, Filter, Sparkles, ArrowRight, RefreshCw,
+  Radio, Layers, CheckCircle2, ShieldCheck, Zap
 } from 'lucide-react';
 import {
   AreaChart, Area, BarChart, Bar, LineChart, Line, XAxis, YAxis,
@@ -58,11 +59,15 @@ export const DashboardPage: React.FC = () => {
   }
 
   const kpis = data?.kpis;
-  const funnel = data?.pipeline_funnel || [];
+  const funnel = data?.pipeline_funnel || data?.funnel || [];
   const timeseries = data?.timeseries || [];
   const timeMetrics = data?.time_metrics;
   const clientPerf = data?.client_performance || [];
   const recruiterPerf = data?.recruiter_performance || [];
+  const benchKpis = data?.bench_kpis;
+  const waKpis = data?.whatsapp_kpis;
+  const posDist = data?.position_status_distribution || {};
+  const candDist = data?.candidate_status_distribution || {};
 
   return (
     <div className="space-y-6 pb-12">
@@ -71,10 +76,10 @@ export const DashboardPage: React.FC = () => {
         <div>
           <h2 className="text-xl font-black text-slate-100 flex items-center gap-2">
             <TrendingUp className="w-5 h-5 text-brand-400" />
-            Recruitment Command Center
+            Recruitment Command Center & WhatsApp Intelligence
           </h2>
           <p className="text-xs text-slate-400 mt-0.5">
-            Real-time pipeline progression, CV submission velocity, and conversion ratios.
+            Real-time pipeline progression, bench talent availability, and candidate WhatsApp outreach velocity.
           </p>
         </div>
 
@@ -122,14 +127,14 @@ export const DashboardPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Top 10 KPI Cards Grid */}
+      {/* Top 10 Core KPI Cards Grid */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3.5">
         <StatCard
           title="Open Jobs"
-          value={kpis?.open_requirements || 0}
+          value={kpis?.open_requirements || kpis?.open_positions || 0}
           icon={Briefcase}
           color="brand"
-          change="+2 this wk"
+          change={`${posDist['OPEN'] || 0} active reqs`}
           isPositive={true}
         />
         <StatCard
@@ -201,6 +206,47 @@ export const DashboardPage: React.FC = () => {
         />
       </div>
 
+      {/* WhatsApp Outreach & Bench Performance Highlight Bar */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* WhatsApp Outreach Snapshot */}
+        <div className="p-4 bg-gradient-to-r from-emerald-950/40 to-slate-900/90 border border-emerald-500/30 rounded-2xl flex items-center justify-between">
+          <div className="flex items-center gap-3.5">
+            <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
+              <MessageSquare className="w-5 h-5" />
+            </div>
+            <div>
+              <p className="text-xs font-bold uppercase text-emerald-400">WhatsApp Candidate Outreach</p>
+              <p className="text-sm font-semibold text-white mt-0.5">
+                {waKpis?.total_messages_sent || 0} Messages Sent • {waKpis?.response_rate_percent || 0}% Response Rate
+              </p>
+            </div>
+          </div>
+          <div className="text-right font-mono text-xs">
+            <span className="text-emerald-300 font-bold">{waKpis?.total_campaigns || 0} Campaigns</span>
+            <span className="text-slate-400 block text-[10px]">{waKpis?.opted_out_count || 0} Opt-Outs</span>
+          </div>
+        </div>
+
+        {/* Bench Talent Snapshot */}
+        <div className="p-4 bg-gradient-to-r from-teal-950/40 to-slate-900/90 border border-teal-500/30 rounded-2xl flex items-center justify-between">
+          <div className="flex items-center gap-3.5">
+            <div className="w-10 h-10 rounded-xl bg-teal-500/10 border border-teal-500/30 flex items-center justify-center text-teal-400">
+              <Award className="w-5 h-5" />
+            </div>
+            <div>
+              <p className="text-xs font-bold uppercase text-teal-400">Bench Talent Pool</p>
+              <p className="text-sm font-semibold text-white mt-0.5">
+                {benchKpis?.total_bench || 0} Total Bench • {benchKpis?.available || 0} Available for Deployment
+              </p>
+            </div>
+          </div>
+          <div className="text-right font-mono text-xs">
+            <span className="text-teal-300 font-bold">{benchKpis?.interviewing || 0} Interviewing</span>
+            <span className="text-slate-400 block text-[10px]">{benchKpis?.allocated || 0} Allocated</span>
+          </div>
+        </div>
+      </div>
+
       {/* Visual Pipeline Funnel & Stage Drop-off */}
       <div className="bg-slate-900/90 border border-slate-800 p-6 rounded-2xl shadow-xl">
         <div className="flex items-center justify-between mb-4">
@@ -217,7 +263,6 @@ export const DashboardPage: React.FC = () => {
 
         <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-9 gap-2.5">
           {funnel.map((st, idx) => {
-            const isLast = idx === funnel.length - 1;
             return (
               <div
                 key={st.stage}
@@ -250,12 +295,12 @@ export const DashboardPage: React.FC = () => {
 
       {/* Time-Series Charts Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Applications & Submissions Over Time */}
+        {/* Candidate Inflow vs. WhatsApp Outreach Volume */}
         <div className="bg-slate-900/90 border border-slate-800 p-6 rounded-2xl shadow-xl">
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h3 className="text-sm font-bold text-slate-100">Candidate Inflow vs. CV Submissions</h3>
-              <p className="text-xs text-slate-400 mt-0.5">Daily sourcing volume & client submissions</p>
+              <h3 className="text-sm font-bold text-slate-100">Candidate Inflow vs. Outreach Activity</h3>
+              <p className="text-xs text-slate-400 mt-0.5">Daily talent added & WhatsApp outreach dispatches</p>
             </div>
           </div>
           <div className="h-64 w-full">
@@ -267,8 +312,8 @@ export const DashboardPage: React.FC = () => {
                     <stop offset="95%" stopColor="#0ea5e9" stopOpacity={0} />
                   </linearGradient>
                   <linearGradient id="colorSubs" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.4} />
-                    <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0} />
+                    <stop offset="5%" stopColor="#10b981" stopOpacity={0.4} />
+                    <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
@@ -278,8 +323,8 @@ export const DashboardPage: React.FC = () => {
                   contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', borderRadius: '12px', fontSize: '12px' }}
                 />
                 <Legend wrapperStyle={{ fontSize: '12px', paddingTop: '8px' }} />
-                <Area type="monotone" dataKey="candidates_added" name="Candidates Sourced" stroke="#0ea5e9" fillOpacity={1} fill="url(#colorCands)" />
-                <Area type="monotone" dataKey="cvs_submitted" name="CVs Submitted" stroke="#8b5cf6" fillOpacity={1} fill="url(#colorSubs)" />
+                <Area type="monotone" dataKey="candidates_added" name="Candidates Added" stroke="#0ea5e9" fillOpacity={1} fill="url(#colorCands)" />
+                <Area type="monotone" dataKey="cvs_submitted" name="CVs Submitted" stroke="#10b981" fillOpacity={1} fill="url(#colorSubs)" />
               </AreaChart>
             </ResponsiveContainer>
           </div>
@@ -339,10 +384,6 @@ export const DashboardPage: React.FC = () => {
             <div className="flex items-center justify-between p-2.5 bg-slate-950/60 rounded-xl border border-slate-800/80">
               <span className="text-xs text-slate-300">Client Response Latency</span>
               <strong className="text-xs font-mono text-amber-300">{timeMetrics?.client_response_time_days ?? 0} days</strong>
-            </div>
-            <div className="flex items-center justify-between p-2.5 bg-slate-950/60 rounded-xl border border-slate-800/80">
-              <span className="text-xs text-slate-300">Average Time in Stage</span>
-              <strong className="text-xs font-mono text-purple-300">{timeMetrics?.time_in_stage_avg_days ?? 0} days</strong>
             </div>
             <div className="flex items-center justify-between p-2.5 bg-slate-950/60 rounded-xl border border-slate-800/80">
               <span className="text-xs text-slate-300">Time to Hire (End-to-End)</span>

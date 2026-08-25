@@ -8,12 +8,13 @@ from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 
-ALLOWED_EXTENSIONS = {".pdf", ".doc", ".docx"}
+ALLOWED_EXTENSIONS = {".pdf", ".doc", ".docx", ".txt"}
 ALLOWED_MIME_TYPES = {
     "application/pdf",
     "application/msword",
     "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-    "application/octet-stream"
+    "application/octet-stream",
+    "text/plain"
 }
 MAX_FILE_SIZE_MB = 15
 MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024

@@ -9,7 +9,7 @@ import { Drawer } from '../components/common/Drawer';
 import {
   Briefcase, Plus, Search, MapPin, DollarSign, Users,
   Clock, Filter, Layers, ListFilter, Sparkles, RefreshCw,
-  CheckCircle2, AlertCircle, Building2
+  CheckCircle2, AlertCircle, Building2, Upload, FileText, X
 } from 'lucide-react';
 import { format } from 'date-fns';
 
@@ -44,6 +44,7 @@ export const RequirementsPage: React.FC = () => {
   const [priority, setPriority] = useState<'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT'>('MEDIUM');
   const [recruiterId, setRecruiterId] = useState('');
   const [jobDesc, setJobDesc] = useState('');
+  const [jobDescFile, setJobDescFile] = useState<File | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const fetchRequirements = async () => {
@@ -88,7 +89,7 @@ export const RequirementsPage: React.FC = () => {
     setIsSubmitting(true);
     try {
       const skillsArray = skillsStr.split(',').map((s) => s.trim()).filter(Boolean);
-      await api.post('/requirements', {
+      const requirementRes = await api.post('/requirements', {
         client_id: clientId,
         job_title: jobTitle,
         department,
@@ -107,11 +108,20 @@ export const RequirementsPage: React.FC = () => {
         job_description: jobDesc,
       });
 
-      showToast('success', 'Requirement Published', `Created job opening for ${jobTitle}`);
+      if (jobDescFile) {
+        const fileData = new FormData();
+        fileData.append('file', jobDescFile);
+        await api.post(`/requirements/${requirementRes.data.id}/jd/upload`, fileData);
+      }
+
+      showToast('success', 'Requirement Published', jobDescFile
+        ? `Created job opening for ${jobTitle} with attachment`
+        : `Created job opening for ${jobTitle}`);
       setIsAddOpen(false);
       setJobTitle('');
       setDepartment('');
       setJobDesc('');
+      setJobDescFile(null);
       fetchRequirements();
     } catch (err: any) {
       showToast('error', 'Creation Failed', err.response?.data?.detail || 'Could not create requirement');
@@ -514,6 +524,46 @@ export const RequirementsPage: React.FC = () => {
               placeholder="Core responsibilities, project scope, team background..."
               className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3.5 py-2 text-xs text-slate-100 focus:outline-none focus:border-brand-500"
             />
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold uppercase tracking-wider text-slate-300 mb-1">
+              Attach Job Description (PDF, TXT, DOC, DOCX)
+            </label>
+            <div className="flex items-center gap-3">
+              <label className="inline-flex items-center gap-2 px-3.5 py-2 bg-slate-800 border border-slate-700 hover:border-brand-500 text-slate-200 rounded-xl text-xs font-semibold cursor-pointer transition-colors">
+                <Upload className="w-4 h-4" />
+                Choose File
+                <input
+                  type="file"
+                  accept=".pdf,.txt,.doc,.docx,application/pdf,text/plain,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0] || null;
+                    if (file && file.size > 15 * 1024 * 1024) {
+                      showToast('error', 'File Too Large', 'Job description must be 15 MB or smaller');
+                      e.target.value = '';
+                      return;
+                    }
+                    setJobDescFile(file);
+                  }}
+                />
+              </label>
+              {jobDescFile && (
+                <div className="flex items-center gap-2 text-xs text-slate-300">
+                  <FileText className="w-4 h-4 text-brand-400" />
+                  <span className="max-w-[240px] truncate">{jobDescFile.name}</span>
+                  <button
+                    type="button"
+                    onClick={() => setJobDescFile(null)}
+                    className="text-slate-400 hover:text-white"
+                    aria-label="Remove job description attachment"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
 
           <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-800">

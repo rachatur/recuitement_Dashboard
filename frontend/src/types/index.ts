@@ -20,6 +20,18 @@ export type CandidateStatus =
   | 'REJECTED'
   | 'ON_HOLD';
 
+export type PositionStatus = 'OPEN' | 'ON_HOLD' | 'CLOSED';
+
+export type BenchStatus =
+  | 'AVAILABLE'
+  | 'PARTIALLY_AVAILABLE'
+  | 'ALLOCATED'
+  | 'INTERVIEWING'
+  | 'ON_HOLD'
+  | 'RELEASED'
+  | 'JOINED'
+  | 'NOT_ON_BENCH';
+
 export type SubmissionStatus =
   | 'DRAFT'
   | 'SUBMITTED'
@@ -41,6 +53,65 @@ export type RequirementStatus =
 
 export type Priority = 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT';
 export type WorkMode = 'REMOTE' | 'HYBRID' | 'ONSITE';
+
+export type WhatsAppConsentStatus =
+  | 'NOT_COLLECTED'
+  | 'PENDING'
+  | 'GRANTED'
+  | 'REVOKED'
+  | 'OPTED_OUT'
+  | 'INVALID_NUMBER'
+  | 'BLOCKED'
+  | 'UNAVAILABLE';
+
+export type WhatsAppCampaignType =
+  | 'NEW_JOB_OPPORTUNITY'
+  | 'INTERVIEW_SCHEDULE'
+  | 'DOCUMENT_COLLECTION'
+  | 'OFFER_FOLLOW_UP'
+  | 'BENCH_OUTREACH'
+  | 'RE_ENGAGEMENT';
+
+export type WhatsAppCampaignStatus =
+  | 'DRAFT'
+  | 'APPROVAL_PENDING'
+  | 'APPROVED'
+  | 'SCHEDULED'
+  | 'SENDING'
+  | 'PAUSED'
+  | 'COMPLETED'
+  | 'CANCELLED';
+
+export type WhatsAppMessageStatus =
+  | 'QUEUED'
+  | 'SENT'
+  | 'DELIVERED'
+  | 'READ'
+  | 'REPLIED'
+  | 'FAILED'
+  | 'OPTED_OUT'
+  | 'SUPPRESSED';
+
+export type WhatsAppConversationStatus =
+  | 'OPEN'
+  | 'AWAITING_CANDIDATE'
+  | 'AWAITING_RECRUITER'
+  | 'INTERESTED'
+  | 'NOT_INTERESTED'
+  | 'OPTED_OUT'
+  | 'CLOSED';
+
+export type WhatsAppResponseCategory =
+  | 'INTERESTED'
+  | 'NOT_INTERESTED'
+  | 'NEED_MORE_INFORMATION'
+  | 'SALARY_EXPECTATION_MISMATCH'
+  | 'LOCATION_UNSUITABLE'
+  | 'AVAILABLE_FOR_INTERVIEW'
+  | 'CALL_ME'
+  | 'ALREADY_OFFERED'
+  | 'OPT_OUT'
+  | 'OTHER';
 
 export interface User {
   id: string;
@@ -78,8 +149,10 @@ export interface Client {
   account_manager_id?: string | null;
   account_manager_name?: string | null;
   status: 'ACTIVE' | 'INACTIVE' | 'ON_HOLD' | 'PROSPECT';
-  open_requirements_count: number;
-  total_submissions_count: number;
+  open_requirements_count?: number;
+  open_positions_count?: number;
+  total_submissions_count?: number;
+  active_submissions_count?: number;
   contacts?: ClientContact[];
   requirements_count?: number;
   active_interviews_count?: number;
@@ -112,8 +185,14 @@ export interface JobRequirement {
   assigned_recruiter_id?: string | null;
   recruiter_name?: string | null;
   status: RequirementStatus;
+  position_status: PositionStatus;
   job_description?: string | null;
+  jd_attachment_name?: string | null;
+  jd_attachment_url?: string | null;
+  jd_attachment_size?: number;
+  jd_attachment_mime?: string;
   candidates_count?: number;
+  related_campaigns_count?: number;
   created_at: string;
   updated_at: string;
 }
@@ -146,6 +225,16 @@ export interface CandidateStatusHistory {
   created_at: string;
 }
 
+export interface WhatsAppEligibilityInfo {
+  is_eligible: boolean;
+  status: string; // 'Eligible' | 'Consent Required' | 'Opted Out' | 'Invalid Number' | 'Blocked'
+  whatsapp_number?: string | null;
+  country_code?: string | null;
+  consent_status: WhatsAppConsentStatus;
+  opt_out_status: boolean;
+  reason?: string | null;
+}
+
 export interface Candidate {
   id: string;
   candidate_code: string;
@@ -153,26 +242,386 @@ export interface Candidate {
   last_name: string;
   email: string;
   phone?: string | null;
+  alternate_phone?: string | null;
   location?: string | null;
   preferred_location?: string | null;
   total_experience: number;
   relevant_experience: number;
   current_company?: string | null;
+  current_designation?: string | null;
   current_ctc?: number | null;
   expected_ctc?: number | null;
   notice_period_days: number;
+  notice_period?: string | null;
   skills: string[];
+  technical_skills?: string[];
   education?: string | null;
+  highest_qualification?: string | null;
+  linkedin_url?: string | null;
+  github_url?: string | null;
+  certifications?: string[];
+  date_of_birth?: string | null;
   source: string;
   recruiter_id?: string | null;
   recruiter_name?: string | null;
   status: CandidateStatus;
-  active_submission_count: number;
+  
+  // WhatsApp fields
+  whatsapp_number?: string | null;
+  country_code?: string | null;
+  is_whatsapp_verified?: boolean;
+  whatsapp_consent_status: WhatsAppConsentStatus;
+  whatsapp_consent_source?: string | null;
+  whatsapp_consent_date?: string | null;
+  whatsapp_consent_evidence?: string | null;
+  whatsapp_opt_out_status?: boolean;
+  preferred_language?: string | null;
+  preferred_contact_time?: string | null;
+  do_not_contact_reason?: string | null;
+  whatsapp_eligibility?: WhatsAppEligibilityInfo;
+  last_whatsapp_contact_date?: string | null;
+  last_whatsapp_response_date?: string | null;
+  last_whatsapp_message_status?: string | null;
+
+  // Bench fields
+  bench_status: BenchStatus;
+  bench_availability_date?: string | null;
+  bench_primary_skills?: string[];
+  bench_secondary_skills?: string[];
+
+  active_submission_count?: number;
+  active_submissions_count?: number;
   latest_document?: CandidateDocument | null;
   documents?: CandidateDocument[];
   status_history?: CandidateStatusHistory[];
+  submissions_count?: number;
+  interviews_count?: number;
+  offers_count?: number;
+  conversations_count?: number;
   created_at: string;
   updated_at: string;
+}
+
+export interface CVExtractionResponse {
+  file_name: string;
+  file_size: number;
+  mime_type: string;
+  temp_file_id?: string | null;
+  first_name?: string;
+  last_name?: string;
+  full_name?: string;
+  email?: string;
+  phone?: string;
+  alternate_phone?: string;
+  whatsapp_number?: string;
+  country_code?: string;
+  location?: string;
+  preferred_location?: string;
+  total_experience?: number;
+  relevant_experience?: number;
+  current_company?: string;
+  current_designation?: string;
+  skills: string[];
+  technical_skills?: string[];
+  education?: string;
+  highest_qualification?: string;
+  notice_period?: string;
+  current_ctc?: number | null;
+  expected_ctc?: number | null;
+  linkedin_url?: string;
+  github_url?: string;
+  certifications?: string[];
+  date_of_birth?: string;
+  summary?: string;
+  whatsapp_eligibility: WhatsAppEligibilityInfo;
+  is_duplicate: boolean;
+  duplicate_candidate_id?: string | null;
+  duplicate_match_field?: string | null;
+}
+
+export interface BulkCVProcessItem {
+  file_name: string;
+  status: 'Completed' | 'Failed' | 'Duplicate' | 'Skipped';
+  candidate_id?: string | null;
+  candidate_name?: string | null;
+  email?: string | null;
+  phone?: string | null;
+  whatsapp_eligibility: string;
+  is_duplicate: boolean;
+  duplicate_reason?: string | null;
+  error_message?: string | null;
+  retry_available?: boolean;
+}
+
+export interface BulkCVUploadSummaryResponse {
+  total_uploaded: number;
+  successfully_processed: number;
+  failed_count: number;
+  duplicates_detected: number;
+  new_candidates_created: number;
+  whatsapp_eligible_count: number;
+  consent_required_count: number;
+  invalid_numbers_count: number;
+  items: BulkCVProcessItem[];
+}
+
+export interface BenchCandidate {
+  candidate_id: string;
+  candidate_code: string;
+  full_name: string;
+  first_name: string;
+  last_name: string;
+  email: string;
+  phone?: string | null;
+  whatsapp_number?: string | null;
+  location?: string | null;
+  preferred_location?: string | null;
+  total_experience: number;
+  relevant_experience: number;
+  current_company?: string | null;
+  designation?: string | null;
+  primary_skills: string[];
+  secondary_skills: string[];
+  notice_period?: string | null;
+  current_ctc?: number | null;
+  expected_ctc?: number | null;
+  bench_status: BenchStatus;
+  availability_date?: string | null;
+  assigned_requirement_id?: string | null;
+  assigned_requirement_code?: string | null;
+  assigned_requirement_title?: string | null;
+  recruiter_id?: string | null;
+  recruiter_name?: string | null;
+  whatsapp_eligibility: WhatsAppEligibilityInfo;
+  whatsapp_consent_status: WhatsAppConsentStatus;
+  last_outreach_date?: string | null;
+  last_updated: string;
+  resume_file_name?: string | null;
+  resume_download_url?: string | null;
+}
+
+export interface RequirementMatchCandidate {
+  candidate: BenchCandidate;
+  match_percentage: number;
+  matched_skills: string[];
+  missing_skills: string[];
+  experience_fit: string;
+  recommendation: string;
+  whatsapp_eligible: boolean;
+}
+
+export interface RequirementMatchResult {
+  requirement_id: string;
+  requirement_code: string;
+  job_title: string;
+  client_name?: string | null;
+  required_skills: string[];
+  total_candidates_evaluated: number;
+  matched_candidates: RequirementMatchCandidate[];
+}
+
+export interface WhatsAppIntegrationSettings {
+  provider: 'MOCK_SIMULATOR' | 'OFFICIAL_CLOUD_API' | 'TWILIO';
+  business_account_id: string;
+  phone_number_id: string;
+  api_base_url: string;
+  access_token?: string | null;
+  webhook_url: string;
+  webhook_verify_token: string;
+  default_country_code: string;
+  message_limit_per_day: number;
+  rate_limit_per_second: number;
+  business_hours_start: string;
+  business_hours_end: string;
+  retry_policy_max_retries: number;
+  default_recruiter_signature: string;
+  is_connected: boolean;
+  connection_status: string;
+  last_test_date?: string | null;
+}
+
+export interface WhatsAppTemplate {
+  id: string;
+  template_name: string;
+  category: 'RECRUITMENT_COMMUNICATION' | 'UTILITY' | 'MARKETING' | 'AUTHENTICATION';
+  language: string;
+  provider_template_id?: string | null;
+  header_type: 'NONE' | 'TEXT' | 'IMAGE' | 'DOCUMENT' | 'VIDEO';
+  header_text?: string | null;
+  body_text: string;
+  footer_text?: string | null;
+  buttons: Array<{ type: string; text: string; url?: string; phone_number?: string }>;
+  variables: string[];
+  status: 'PENDING_APPROVAL' | 'APPROVED' | 'REJECTED' | 'PAUSED' | 'DISABLED';
+  version: number;
+  created_by_name?: string | null;
+  approved_by_name?: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface WhatsAppCampaignRecipient {
+  id: string;
+  campaign_id: string;
+  candidate_id: string;
+  candidate_name: string;
+  candidate_code: string;
+  whatsapp_number: string;
+  eligibility_status: string;
+  exclusion_reason?: string | null;
+  message_status: WhatsAppMessageStatus;
+  sent_at?: string | null;
+  delivered_at?: string | null;
+  read_at?: string | null;
+  replied_at?: string | null;
+  failed_at?: string | null;
+  failure_reason?: string | null;
+}
+
+export interface WhatsAppCampaign {
+  id: string;
+  campaign_name: string;
+  campaign_type: WhatsAppCampaignType;
+  requirement_id?: string | null;
+  requirement_code?: string | null;
+  job_title?: string | null;
+  client_name?: string | null;
+  template_id: string;
+  template_name?: string | null;
+  recruiter_id: string;
+  recruiter_name?: string | null;
+  status: WhatsAppCampaignStatus;
+  scheduled_date?: string | null;
+  time_zone: string;
+  total_recipients: number;
+  eligible_count: number;
+  excluded_count: number;
+  sent_count: number;
+  delivered_count: number;
+  read_count: number;
+  replied_count: number;
+  failed_count: number;
+  opted_out_count: number;
+  delivery_rate: number;
+  response_rate: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface WhatsAppCampaignAnalytics {
+  campaign: WhatsAppCampaign;
+  recipients: WhatsAppCampaignRecipient[];
+  delivery_breakdown: Record<string, number>;
+  response_rate_percent: number;
+  delivery_rate_percent: number;
+  read_rate_percent: number;
+  failure_rate_percent: number;
+  average_response_time_minutes?: number | null;
+  interested_count: number;
+  not_interested_count: number;
+  interviews_scheduled_count: number;
+}
+
+export interface WhatsAppMessage {
+  id: string;
+  conversation_id: string;
+  candidate_id: string;
+  candidate_name?: string | null;
+  direction: 'OUTBOUND' | 'INBOUND';
+  message_type: 'TEXT' | 'TEMPLATE' | 'IMAGE' | 'DOCUMENT' | 'AUDIO' | 'VIDEO' | 'INTERACTIVE_BUTTON' | 'LOCATION';
+  content: string;
+  attachment_name?: string | null;
+  attachment_url?: string | null;
+  status: WhatsAppMessageStatus;
+  sent_at?: string | null;
+  delivered_at?: string | null;
+  read_at?: string | null;
+  replied_at?: string | null;
+  failed_at?: string | null;
+  failure_reason?: string | null;
+  is_automated_response?: boolean;
+  created_at: string;
+}
+
+export interface WhatsAppConversation {
+  id: string;
+  candidate_id: string;
+  candidate_name: string;
+  candidate_code: string;
+  whatsapp_number: string;
+  assigned_recruiter_id?: string | null;
+  assigned_recruiter_name?: string | null;
+  requirement_id?: string | null;
+  requirement_title?: string | null;
+  status: WhatsAppConversationStatus;
+  response_category: WhatsAppResponseCategory;
+  last_message_text?: string | null;
+  last_message_date: string;
+  last_incoming_date?: string | null;
+  unread_count: number;
+  internal_notes?: string | null;
+  follow_up_date?: string | null;
+  is_automation_disabled?: boolean;
+  opt_out_status?: boolean;
+  messages: WhatsAppMessage[];
+  created_at: string;
+  updated_at: string;
+}
+
+export interface WhatsAppOptOut {
+  id: string;
+  candidate_id?: string | null;
+  candidate_name?: string | null;
+  whatsapp_number: string;
+  opt_out_source: string;
+  reason: string;
+  recorded_by_name?: string | null;
+  is_active: boolean;
+  created_at: string;
+}
+
+export interface HistoryLog {
+  id: string;
+  entity_type: string;
+  entity_id?: string | null;
+  action: string;
+  user_id?: string | null;
+  user_name?: string | null;
+  user_email?: string | null;
+  user_role?: string | null;
+  old_value?: any;
+  new_value?: any;
+  remarks?: string | null;
+  campaign_id?: string | null;
+  message_id?: string | null;
+  provider_ref_id?: string | null;
+  ip_address: string;
+  user_agent: string;
+  created_at: string;
+}
+
+export interface WhatsAppDashboardSummary {
+  total_campaigns: number;
+  active_campaigns: number;
+  draft_campaigns: number;
+  scheduled_campaigns: number;
+  completed_campaigns: number;
+  total_recipients: number;
+  messages_sent: number;
+  messages_delivered: number;
+  messages_read: number;
+  messages_replied: number;
+  messages_failed: number;
+  opted_out_count: number;
+  invalid_numbers_count: number;
+  delivery_rate_percent: number;
+  response_rate_percent: number;
+  read_rate_percent: number;
+  volume_trend: Array<{ date: string; sent: number; replied: number }>;
+  delivery_breakdown: Record<string, number>;
+  response_categories: Record<string, number>;
+  campaign_performances: Array<any>;
+  opt_out_trends: Array<any>;
 }
 
 export interface CVSubmission {
@@ -187,6 +636,8 @@ export interface CVSubmission {
   candidate_email?: string | null;
   document_id: string;
   document_version?: number;
+  document_file_name?: string | null;
+  document_file_url?: string | null;
   document_url?: string | null;
   recruiter_id?: string | null;
   recruiter_name?: string | null;
@@ -218,6 +669,7 @@ export interface Interview {
   interview_code: string;
   candidate_id: string;
   candidate_name?: string | null;
+  candidate_whatsapp?: string | null;
   requirement_id: string;
   requirement_title?: string | null;
   client_id: string;
@@ -265,6 +717,7 @@ export interface JoiningDetail {
 
 export interface Offer {
   id: string;
+  offer_code?: string;
   candidate_id: string;
   candidate_name?: string | null;
   requirement_id: string;
@@ -272,7 +725,8 @@ export interface Offer {
   client_id: string;
   client_name?: string | null;
   submission_id: string;
-  offered_ctc: number;
+  offered_ctc?: number;
+  annual_ctc?: number;
   joining_bonus: number;
   currency: string;
   offer_date: string;
@@ -314,15 +768,32 @@ export interface AuditLog {
 
 export interface KPICards {
   open_requirements: number;
+  open_positions?: number;
+  on_hold_positions?: number;
+  closed_positions?: number;
+  total_requirements?: number;
   total_candidates: number;
   cvs_received: number;
   cvs_screened: number;
   cvs_submitted: number;
+  candidates_submitted?: number;
+  candidates_shortlisted?: number;
+  candidates_rejected?: number;
+  candidates_in_interview?: number;
+  bench_resources?: number;
+  available_bench_resources?: number;
+  positions_filled?: number;
   client_responses: number;
   interviews: number;
   selected: number;
   offers: number;
   joined: number;
+  whatsapp_campaigns?: number;
+  whatsapp_messages_sent?: number;
+  whatsapp_messages_delivered?: number;
+  whatsapp_candidate_replies?: number;
+  whatsapp_response_rate?: number;
+  whatsapp_opt_outs?: number;
 }
 
 export interface PipelineFunnelStage {
@@ -334,11 +805,15 @@ export interface PipelineFunnelStage {
 export interface TimeSeriesPoint {
   date: string;
   candidates_added: number;
+  cvs_received?: number;
   cvs_submitted: number;
-  interviews_held: number;
-  selected: number;
+  interviews?: number;
+  interviews_held?: number;
+  selected?: number;
   offers: number;
   joined: number;
+  wa_sent?: number;
+  wa_replies?: number;
 }
 
 export interface ClientPerformanceItem {
@@ -379,9 +854,18 @@ export interface TimeMetrics {
 
 export interface DashboardSummary {
   kpis: KPICards;
-  pipeline_funnel: PipelineFunnelStage[];
-  timeseries: TimeSeriesPoint[];
-  client_performance: ClientPerformanceItem[];
-  recruiter_performance: RecruiterPerformanceItem[];
-  time_metrics: TimeMetrics;
+  funnel?: PipelineFunnelStage[];
+  pipeline_funnel?: PipelineFunnelStage[];
+  position_status_distribution?: Record<string, number>;
+  candidate_status_distribution?: Record<string, number>;
+  bench_kpis?: Record<string, any>;
+  whatsapp_kpis?: Record<string, any>;
+  active_clients?: Array<any>;
+  urgent_requirements?: Array<any>;
+  recent_activities?: Array<any>;
+  time_series_trend?: Array<any>;
+  timeseries?: TimeSeriesPoint[];
+  client_performance?: ClientPerformanceItem[];
+  recruiter_performance?: RecruiterPerformanceItem[];
+  time_metrics?: TimeMetrics;
 }
