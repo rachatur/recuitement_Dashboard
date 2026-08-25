@@ -4,6 +4,8 @@
 
 **RecruitFlow** is a production-grade, enterprise SaaS Recruitment Management and Applicant Tracking Platform (ATS) designed to manage the entire talent acquisition lifecycle: from client requirements creation, candidate sourcing, multi-version CV storage, client submissions pipeline, interview coordination, and offer release to candidate onboarding.
 
+For current local Windows, Linux, and macOS setup instructions, see [LOCAL_SETUP.md](LOCAL_SETUP.md).
+
 Built with **FastAPI**, **SQLAlchemy**, **PostgreSQL 17**, **Vite**, **React 19**, **TypeScript**, and **Tailwind CSS**, RecruitFlow strictly enforces **never losing recruitment history** through immutable audit logs, sequential candidate timeline event tracking, and non-destructive document versioning.
 
 ---
