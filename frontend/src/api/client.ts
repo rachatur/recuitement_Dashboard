@@ -1,10 +1,6 @@
 import axios from 'axios';
 
-const defaultApiBaseUrl = window.location.port === '5173'
-  ? '/api/v1'
-  : `${window.location.protocol}//${window.location.hostname}:8000/api/v1`;
-
-export const API_BASE_URL = import.meta.env.VITE_API_URL || defaultApiBaseUrl;
+export const API_BASE_URL = import.meta.env.VITE_API_URL || '/api/v1';
 
 export const apiUrl = (path: string): string => {
   const normalizedPath = path.startsWith('/api/v1')
