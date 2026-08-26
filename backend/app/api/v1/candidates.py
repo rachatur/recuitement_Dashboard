@@ -293,6 +293,7 @@ async def bulk_cv_upload(
     for file in files:
         filename = file.filename or "unknown_cv.pdf"
         try:
+            storage_service.validate_file(file)
             content = await file.read()
             raw_text = extract_text_from_file(content, filename)
             parsed = parse_candidate_from_text(raw_text, filename)

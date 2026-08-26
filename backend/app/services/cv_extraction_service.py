@@ -2,6 +2,8 @@ import os
 import re
 import io
 import logging
+import shutil
+import subprocess
 from typing import Dict, Any, List, Optional, Tuple
 from datetime import datetime, timezone
 from sqlalchemy.orm import Session
@@ -66,7 +68,23 @@ def extract_text_from_file(file_content: bytes, filename: str) -> str:
         except Exception as e:
             logger.warning(f"pypdf extraction failed for {filename}: {e}")
             
-    elif ext in [".docx"]:
+    elif ext == ".doc":
+        antiword = shutil.which("antiword")
+        if antiword:
+            try:
+                result = subprocess.run(
+                    [antiword, "-m", "UTF-8.txt", "-"],
+                    input=file_content,
+                    capture_output=True,
+                    check=True,
+                )
+                text = result.stdout.decode("utf-8", errors="ignore")
+            except (OSError, subprocess.SubprocessError) as e:
+                logger.warning(f"antiword extraction failed for {filename}: {e}")
+        else:
+            logger.warning("antiword is not installed; legacy .doc text cannot be extracted")
+
+    elif ext == ".docx":
         try:
             import docx
             doc = docx.Document(io.BytesIO(file_content))
