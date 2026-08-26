@@ -463,6 +463,7 @@ export const SubmissionsPage: React.FC = () => {
               onChange={(e) => setFbDecision(e.target.value as any)}
               className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3.5 py-2 text-xs text-slate-100 focus:outline-none focus:border-brand-500"
             >
+              <option value="PENDING">Pending Review</option>
               <option value="SHORTLISTED">Shortlisted for Interview</option>
               <option value="SCHEDULE_INTERVIEW">Schedule Interview Directly</option>
               <option value="ON_HOLD">Put On Hold</option>

@@ -10,7 +10,7 @@ from app.services.notification_service import create_notification, broadcast_rol
 from app.models import (
     CVSubmission, Candidate, JobRequirement, Client, CandidateDocument,
     CandidateStatusHistory, RecruiterActivity, User, SubmissionStatusEnum,
-    CandidateStatusEnum, NotificationTypeEnum
+    CandidateStatusEnum, NotificationTypeEnum, RequirementStatusEnum
 )
 from app.schemas import CVSubmissionCreate, CVSubmissionStatusUpdate, CVSubmissionResponse
 
@@ -103,6 +103,8 @@ def create_submission(
     requirement = db.query(JobRequirement).filter(JobRequirement.id == sub_in.requirement_id).first()
     if not requirement:
         raise HTTPException(status_code=404, detail="Requirement not found")
+    if requirement.status == RequirementStatusEnum.CLOSED:
+        raise HTTPException(status_code=400, detail="Cannot submit a CV to a closed job requirement")
 
     client = db.query(Client).filter(Client.id == sub_in.client_id).first()
     if not client:

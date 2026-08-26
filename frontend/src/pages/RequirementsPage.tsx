@@ -42,6 +42,7 @@ export const RequirementsPage: React.FC = () => {
   const [salaryMax, setSalaryMax] = useState(0);
   const [openings, setOpenings] = useState(1);
   const [priority, setPriority] = useState<'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT'>('MEDIUM');
+  const [requirementStatus, setRequirementStatus] = useState<'OPEN' | 'CLOSED'>('OPEN');
   const [recruiterId, setRecruiterId] = useState('');
   const [jobDesc, setJobDesc] = useState('');
   const [jobDescFile, setJobDescFile] = useState<File | null>(null);
@@ -104,7 +105,7 @@ export const RequirementsPage: React.FC = () => {
         openings_count: Number(openings),
         priority,
         assigned_recruiter_id: recruiterId || undefined,
-        status: 'OPEN',
+        status: requirementStatus,
         job_description: jobDesc,
       });
 
@@ -120,6 +121,9 @@ export const RequirementsPage: React.FC = () => {
       setIsAddOpen(false);
       setJobTitle('');
       setDepartment('');
+      setSalaryMin(0);
+      setSalaryMax(0);
+      setRequirementStatus('OPEN');
       setJobDesc('');
       setJobDescFile(null);
       fetchRequirements();
@@ -417,7 +421,7 @@ export const RequirementsPage: React.FC = () => {
             </div>
           </div>
 
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
             <div>
               <label className="block text-xs font-semibold uppercase tracking-wider text-slate-300 mb-1">
                 Department
@@ -501,6 +505,18 @@ export const RequirementsPage: React.FC = () => {
             </div>
             <div>
               <label className="block text-xs font-semibold uppercase tracking-wider text-slate-300 mb-1">
+                Salary Max ($ USD)
+              </label>
+              <input
+                type="number"
+                min="0"
+                value={salaryMax}
+                onChange={(e) => setSalaryMax(Number(e.target.value))}
+                className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3.5 py-2 text-xs text-slate-100 focus:outline-none focus:border-brand-500"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold uppercase tracking-wider text-slate-300 mb-1">
                 Openings Count
               </label>
               <input
@@ -511,6 +527,20 @@ export const RequirementsPage: React.FC = () => {
                 className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3.5 py-2 text-xs text-slate-100 focus:outline-none focus:border-brand-500"
               />
             </div>
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold uppercase tracking-wider text-slate-300 mb-1">
+              Requirement Status
+            </label>
+            <select
+              value={requirementStatus}
+              onChange={(e) => setRequirementStatus(e.target.value as 'OPEN' | 'CLOSED')}
+              className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3.5 py-2 text-xs text-slate-100 focus:outline-none focus:border-brand-500"
+            >
+              <option value="OPEN">Open - accepting candidates</option>
+              <option value="CLOSED">Closed - stop accepting candidates</option>
+            </select>
           </div>
 
           <div>

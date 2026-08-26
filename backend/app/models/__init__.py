@@ -102,6 +102,7 @@ class InterviewStatusEnum(str, enum.Enum):
     NO_SHOW = "NO_SHOW"
 
 class ClientFeedbackDecisionEnum(str, enum.Enum):
+    PENDING = "PENDING"
     SHORTLISTED = "SHORTLISTED"
     REJECTED = "REJECTED"
     ON_HOLD = "ON_HOLD"
