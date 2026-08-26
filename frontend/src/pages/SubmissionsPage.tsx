@@ -277,6 +277,22 @@ export const SubmissionsPage: React.FC = () => {
                       <StatusBadge status={sub.status} />
                     </td>
                     <td className="px-5 py-3.5 text-right space-x-2">
+                      {canSubmit && (
+                        <select
+                          value=""
+                          onChange={(e) => e.target.value && handleStatusChange(sub.id, e.target.value)}
+                          className="bg-slate-800 border border-slate-700 rounded-lg px-2 py-1 text-[11px] text-slate-300"
+                          aria-label={`Update status for ${sub.submission_code}`}
+                        >
+                          <option value="">Update status</option>
+                          <option value="CLIENT_VIEWED">Client viewed</option>
+                          <option value="SHORTLISTED">Shortlisted</option>
+                          <option value="INTERVIEW">Interview</option>
+                          <option value="SELECTED">Selected</option>
+                          <option value="REJECTED">Rejected</option>
+                          <option value="ON_HOLD">On hold</option>
+                        </select>
+                      )}
                       {canProvideFeedback && (
                         <button
                           onClick={() => {

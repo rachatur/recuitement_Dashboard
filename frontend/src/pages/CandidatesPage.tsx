@@ -9,7 +9,7 @@ import {
   Users, UserPlus, Upload, Search, Filter, Download,
   CheckCircle2, XCircle, AlertCircle, Phone, Mail,
   MapPin, Briefcase, Eye, ShieldCheck, ShieldAlert,
-  Clock, ExternalLink, RefreshCw, FileText, Check, AlertTriangle, MessageSquare
+  Clock, ExternalLink, RefreshCw, FileText, Check, AlertTriangle, MessageSquare, Trash2
 } from 'lucide-react';
 
 interface CandidatesPageProps {
@@ -270,6 +270,26 @@ export const CandidatesPage: React.FC<CandidatesPageProps> = ({ onViewCandidateP
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
+  };
+
+  const handleDeleteCandidate = async (candidate: Candidate) => {
+    if (!window.confirm(`Delete candidate ${candidate.first_name} ${candidate.last_name}? This cannot be undone.`)) return;
+
+    try {
+      const res = await apiFetch(`/api/v1/candidates/${candidate.id}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (!res.ok) {
+        const error = await res.json();
+        alert(error.detail || 'Failed to delete candidate.');
+        return;
+      }
+      fetchCandidates();
+    } catch (err) {
+      console.error('Delete candidate error:', err);
+      alert('Failed to delete candidate.');
+    }
   };
 
   return (
@@ -544,6 +564,16 @@ export const CandidatesPage: React.FC<CandidatesPageProps> = ({ onViewCandidateP
                             <Eye className="w-3.5 h-3.5" />
                             <span>Profile</span>
                           </button>
+
+                          {user && ['SUPER_ADMIN', 'ADMIN'].includes(user.role) && (
+                            <button
+                              onClick={() => handleDeleteCandidate(cand)}
+                              title="Delete candidate"
+                              className="p-1.5 bg-rose-950/40 hover:bg-rose-900/70 text-rose-300 hover:text-white rounded-lg border border-rose-800/60 transition"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>
