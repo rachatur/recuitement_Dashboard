@@ -9,7 +9,7 @@ import { Drawer } from '../components/common/Drawer';
 import {
   Briefcase, Plus, Search, MapPin, DollarSign, Users,
   Clock, Filter, Layers, ListFilter, Sparkles, RefreshCw,
-  CheckCircle2, AlertCircle, Building2, Upload, FileText, X
+  CheckCircle2, AlertCircle, Building2, Upload, FileText, X, Pencil
 } from 'lucide-react';
 import { format } from 'date-fns';
 
@@ -30,6 +30,7 @@ export const RequirementsPage: React.FC = () => {
 
   // Add Requirement Modal State
   const [isAddOpen, setIsAddOpen] = useState(false);
+  const [editingReq, setEditingReq] = useState<JobRequirement | null>(null);
   const [clientId, setClientId] = useState('');
   const [jobTitle, setJobTitle] = useState('');
   const [department, setDepartment] = useState('');
@@ -90,7 +91,7 @@ export const RequirementsPage: React.FC = () => {
     setIsSubmitting(true);
     try {
       const skillsArray = skillsStr.split(',').map((s) => s.trim()).filter(Boolean);
-      const requirementRes = await api.post('/requirements', {
+      const payload = {
         client_id: clientId,
         job_title: jobTitle,
         department,
@@ -107,18 +108,23 @@ export const RequirementsPage: React.FC = () => {
         assigned_recruiter_id: recruiterId || undefined,
         status: requirementStatus,
         job_description: jobDesc,
-      });
+      };
+      const requirementRes = editingReq
+        ? await api.put(`/requirements/${editingReq.id}`, payload)
+        : await api.post('/requirements', payload);
 
-      if (jobDescFile) {
+      if (jobDescFile && !editingReq) {
         const fileData = new FormData();
         fileData.append('file', jobDescFile);
         await api.post(`/requirements/${requirementRes.data.id}/jd/upload`, fileData);
       }
 
-      showToast('success', 'Requirement Published', jobDescFile
-        ? `Created job opening for ${jobTitle} with attachment`
-        : `Created job opening for ${jobTitle}`);
+      showToast('success', editingReq ? 'Requirement Updated' : 'Requirement Published',
+        editingReq ? `Updated job opening for ${jobTitle}` : jobDescFile
+          ? `Created job opening for ${jobTitle} with attachment`
+          : `Created job opening for ${jobTitle}`);
       setIsAddOpen(false);
+      setEditingReq(null);
       setJobTitle('');
       setDepartment('');
       setSalaryMin(0);
@@ -132,6 +138,27 @@ export const RequirementsPage: React.FC = () => {
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const handleEditRequirement = (requirement: JobRequirement) => {
+    setEditingReq(requirement);
+    setClientId(requirement.client_id);
+    setJobTitle(requirement.job_title);
+    setDepartment(requirement.department || '');
+    setSkillsStr(requirement.required_skills.join(', '));
+    setExpMin(requirement.experience_min || 0);
+    setExpMax(requirement.experience_max || 0);
+    setLocation(requirement.location || '');
+    setWorkMode(requirement.work_mode);
+    setSalaryMin(requirement.salary_min || 0);
+    setSalaryMax(requirement.salary_max || 0);
+    setOpenings(requirement.openings_count || 1);
+    setPriority(requirement.priority);
+    setRecruiterId(requirement.assigned_recruiter_id || '');
+    setRequirementStatus(requirement.status === 'CLOSED' ? 'CLOSED' : 'OPEN');
+    setJobDesc(requirement.job_description || '');
+    setJobDescFile(null);
+    setIsAddOpen(true);
   };
 
   const canManage = hasRole(['SUPER_ADMIN', 'ADMIN', 'RECRUITER', 'TEAM_LEAD']);
@@ -310,11 +337,13 @@ export const RequirementsPage: React.FC = () => {
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
-                          setSelectedReq(r);
+                          handleEditRequirement(r);
                         }}
                         className="px-3 py-1 bg-slate-800 hover:bg-brand-600 text-slate-300 hover:text-white rounded-lg text-[11px] font-semibold transition-all border border-slate-700"
                       >
-                        Inspect
+                        <span className="inline-flex items-center gap-1.5">
+                          <Pencil className="w-3 h-3" /> Edit
+                        </span>
                       </button>
                     </td>
                   </tr>
@@ -382,9 +411,12 @@ export const RequirementsPage: React.FC = () => {
       {/* Post Requirement Modal */}
       <Modal
         isOpen={isAddOpen}
-        onClose={() => setIsAddOpen(false)}
-        title="Post New Client Job Requirement"
-        subtitle="Create an active recruitment mandate with salary targets and required technical skills."
+        onClose={() => {
+          setIsAddOpen(false);
+          setEditingReq(null);
+        }}
+        title={editingReq ? 'Edit Client Job Requirement' : 'Post New Client Job Requirement'}
+        subtitle={editingReq ? 'Update the opening, salary range, and status.' : 'Create an active recruitment mandate with salary targets and required technical skills.'}
         maxWidth="2xl"
       >
         <form onSubmit={handleCreateRequirement} className="space-y-4">
@@ -599,7 +631,10 @@ export const RequirementsPage: React.FC = () => {
           <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-800">
             <button
               type="button"
-              onClick={() => setIsAddOpen(false)}
+              onClick={() => {
+                setIsAddOpen(false);
+                setEditingReq(null);
+              }}
               className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold rounded-xl"
             >
               Cancel
@@ -609,7 +644,7 @@ export const RequirementsPage: React.FC = () => {
               disabled={isSubmitting}
               className="px-5 py-2 bg-brand-600 hover:bg-brand-500 text-white text-xs font-bold rounded-xl shadow-lg shadow-brand-900/40"
             >
-              {isSubmitting ? 'Publishing...' : 'Publish Job Requirement'}
+              {isSubmitting ? 'Saving...' : editingReq ? 'Save Requirement Changes' : 'Publish Job Requirement'}
             </button>
           </div>
         </form>
