@@ -141,6 +141,7 @@ def create_submission(
         updated_at=now
     )
     db.add(new_sub)
+    db.flush()
 
     # Update candidate status
     old_cand_status = str(candidate.status.value if hasattr(candidate.status, 'value') else candidate.status)
