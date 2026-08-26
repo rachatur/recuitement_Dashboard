@@ -5,6 +5,7 @@ from typing import List, Optional
 from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException, status, Request, UploadFile, File, Form, Query
 from fastapi.responses import FileResponse, Response
+from sqlalchemy import Text, cast
 from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.core.rbac import get_current_active_user, require_roles, RoleEnum
@@ -160,7 +161,9 @@ def get_candidates(
             Candidate.phone.ilike(f"%{search}%") |
             Candidate.whatsapp_number.ilike(f"%{search}%") |
             Candidate.candidate_code.ilike(f"%{search}%") |
-            Candidate.current_company.ilike(f"%{search}%")
+            Candidate.current_company.ilike(f"%{search}%") |
+            Candidate.current_designation.ilike(f"%{search}%") |
+            cast(Candidate.skills, Text).ilike(f"%{search}%")
         )
 
     candidates = query.order_by(Candidate.created_at.desc()).all()

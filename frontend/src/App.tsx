@@ -34,6 +34,7 @@ const AppContent: React.FC = () => {
   const [selectedCandidateId, setSelectedCandidateId] = useState<string | null>(null);
   const [campaignCandidateIds, setCampaignCandidateIds] = useState<string[]>([]);
   const [campaignRequirementId, setCampaignRequirementId] = useState<string | undefined>(undefined);
+  const [globalSearch, setGlobalSearch] = useState('');
 
   if (isLoading) {
     return (
@@ -59,6 +60,11 @@ const AppContent: React.FC = () => {
     setActiveTab('whatsapp-campaigns');
   };
 
+  const handleGlobalSearch = (term: string) => {
+    setGlobalSearch(term);
+    if (term.trim()) setActiveTab('candidates');
+  };
+
   const renderActivePage = () => {
     switch (activeTab) {
       case 'dashboard':
@@ -77,6 +83,7 @@ const AppContent: React.FC = () => {
         return (
           <CandidatesPage
             onViewCandidateProfile={handleViewCandidateProfile}
+            initialSearch={globalSearch}
           />
         );
       case 'candidate-profile':
@@ -143,7 +150,7 @@ const AppContent: React.FC = () => {
   };
 
   return (
-    <AppLayout activeTab={activeTab} setActiveTab={setActiveTab}>
+    <AppLayout activeTab={activeTab} setActiveTab={setActiveTab} onGlobalSearch={handleGlobalSearch}>
       {renderActivePage()}
     </AppLayout>
   );

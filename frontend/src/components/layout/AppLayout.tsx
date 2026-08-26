@@ -5,12 +5,14 @@ import { Navbar } from './Navbar';
 interface AppLayoutProps {
   activeTab: string;
   setActiveTab: (tab: string) => void;
+  onGlobalSearch?: (term: string) => void;
   children: ReactNode;
 }
 
 export const AppLayout: React.FC<AppLayoutProps> = ({
   activeTab,
   setActiveTab,
+  onGlobalSearch,
   children,
 }) => {
   return (
@@ -21,7 +23,7 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
       {/* Main Content Viewport */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         {/* Top Navbar */}
-        <Navbar />
+        <Navbar onSearch={onGlobalSearch} />
 
         {/* Dynamic Page Container */}
         <main className="flex-1 overflow-y-auto px-8 py-6 bg-slate-900/40">

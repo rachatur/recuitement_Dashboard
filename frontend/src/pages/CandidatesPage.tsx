@@ -14,9 +14,10 @@ import {
 
 interface CandidatesPageProps {
   onViewCandidateProfile?: (candidateId: string) => void;
+  initialSearch?: string;
 }
 
-export const CandidatesPage: React.FC<CandidatesPageProps> = ({ onViewCandidateProfile }) => {
+export const CandidatesPage: React.FC<CandidatesPageProps> = ({ onViewCandidateProfile, initialSearch = '' }) => {
   const { token, user } = useAuth();
   const [candidates, setCandidates] = useState<Candidate[]>([]);
   const [loading, setLoading] = useState(true);
@@ -99,6 +100,10 @@ export const CandidatesPage: React.FC<CandidatesPageProps> = ({ onViewCandidateP
   useEffect(() => {
     fetchCandidates();
   }, [search, statusFilter, skillFilter, waEligibleFilter]);
+
+  useEffect(() => {
+    setSearch(initialSearch);
+  }, [initialSearch]);
 
   // Single CV Upload & Intelligent Extraction
   const handleSingleCVUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
