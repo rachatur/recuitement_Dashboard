@@ -1177,8 +1177,11 @@ class AIMatchScoreRequest(BaseModel):
     requirement_id: str
 
 class AIMatchScoreResponse(BaseModel):
-    match_score: int
+    candidate_id: str
+    requirement_id: str
+    overall_match_score: int
     matched_skills: List[str] = []
     missing_skills: List[str] = []
     experience_fit: str
-    reasoning: str
+    ai_recommendation: str
+    summary: str
