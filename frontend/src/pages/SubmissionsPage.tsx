@@ -9,7 +9,7 @@ import { Drawer } from '../components/common/Drawer';
 import {
   Send, Plus, Search, Building2, Briefcase, User,
   FileText, Clock, CheckCircle2, MessageSquare, AlertCircle,
-  ExternalLink, RefreshCw, Star
+  ExternalLink, RefreshCw, Star, Upload
 } from 'lucide-react';
 import { format } from 'date-fns';
 
@@ -31,6 +31,7 @@ export const SubmissionsPage: React.FC = () => {
   const [subClientId, setSubClientId] = useState('');
   const [subReqId, setSubReqId] = useState('');
   const [subCandId, setSubCandId] = useState('');
+  const [subCvFile, setSubCvFile] = useState<File | null>(null);
   const [subRemarks, setSubRemarks] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -85,23 +86,35 @@ export const SubmissionsPage: React.FC = () => {
 
     // Find candidate's latest document
     const cand = candidates.find((c) => c.id === subCandId);
-    if (!cand || !cand.latest_document) {
+    if (!cand || (!cand.latest_document && !subCvFile)) {
       showToast('error', 'Missing Document', 'Selected candidate has no CV uploaded. Please upload a CV first.');
       return;
     }
 
     setIsSubmitting(true);
     try {
+      let documentId = cand.latest_document?.id;
+      if (subCvFile) {
+        const formData = new FormData();
+        formData.append('file', subCvFile);
+        formData.append('document_type', 'Resume');
+        const uploadResponse = await api.post(`/candidates/${subCandId}/documents`, formData, {
+          headers: { 'Content-Type': 'multipart/form-data' },
+        });
+        documentId = uploadResponse.data.id;
+      }
+
       await api.post('/submissions', {
         client_id: subClientId,
         requirement_id: subReqId,
         candidate_id: subCandId,
-        document_id: cand.latest_document.id,
+        document_id: documentId,
         remarks: subRemarks,
       });
 
       showToast('success', 'CV Submitted', 'Candidate profile and CV submitted to client successfully');
       setIsSubmitOpen(false);
+      setSubCvFile(null);
       setSubRemarks('');
       fetchSubmissions();
     } catch (err: any) {
@@ -287,7 +300,10 @@ export const SubmissionsPage: React.FC = () => {
       {/* Submit CV Modal */}
       <Modal
         isOpen={isSubmitOpen}
-        onClose={() => setIsSubmitOpen(false)}
+        onClose={() => {
+          setIsSubmitOpen(false);
+          setSubCvFile(null);
+        }}
         title="Submit Candidate CV to Client"
         subtitle="Select client requirement and verify candidate CV version before submission."
         maxWidth="xl"
@@ -340,7 +356,10 @@ export const SubmissionsPage: React.FC = () => {
             <select
               required
               value={subCandId}
-              onChange={(e) => setSubCandId(e.target.value)}
+              onChange={(e) => {
+                setSubCandId(e.target.value);
+                setSubCvFile(null);
+              }}
               className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3.5 py-2 text-xs text-slate-100 focus:outline-none focus:border-brand-500"
             >
               <option value="">-- Choose Candidate --</option>
@@ -350,6 +369,27 @@ export const SubmissionsPage: React.FC = () => {
                 </option>
               ))}
             </select>
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold uppercase tracking-wider text-slate-300 mb-1">
+              Attach CV for Client
+            </label>
+            <label className="flex items-center gap-3 w-full bg-slate-800 border border-dashed border-slate-600 hover:border-brand-500 rounded-xl px-3.5 py-2.5 cursor-pointer transition-colors">
+              <Upload className="w-4 h-4 text-brand-400 shrink-0" />
+              <span className="text-xs text-slate-300 truncate">
+                {subCvFile?.name || 'Choose a PDF, DOC, DOCX, or TXT file'}
+              </span>
+              <input
+                type="file"
+                accept=".pdf,.doc,.docx,.txt,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain"
+                onChange={(e) => setSubCvFile(e.target.files?.[0] || null)}
+                className="sr-only"
+              />
+            </label>
+            <p className="text-[10px] text-slate-500 mt-1">
+              Optional. Leave empty to submit the candidate's latest uploaded CV. Maximum size: 15 MB.
+            </p>
           </div>
 
           <div>
@@ -368,7 +408,10 @@ export const SubmissionsPage: React.FC = () => {
           <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-800">
             <button
               type="button"
-              onClick={() => setIsSubmitOpen(false)}
+              onClick={() => {
+                setIsSubmitOpen(false);
+                setSubCvFile(null);
+              }}
               className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold rounded-xl"
             >
               Cancel
