@@ -1,74 +1,78 @@
-# RecruitFlow Local Setup
+# RecruitFlow — Local Setup & Development Guide
 
-This guide runs the FastAPI backend and React frontend locally on Windows, Linux, or macOS.
+This guide covers running the FastAPI backend and React frontend locally or using Docker on Windows, Linux, and macOS.
 
-## Prerequisites
+---
 
-- Python 3.11 or newer
-- Node.js 18 or newer and npm
-- PostgreSQL 17 running on `localhost:5432`
-- Git
+## 📋 System Prerequisites
 
-The default database settings are:
+- **Python 3.11** or newer
+- **Node.js 18** or newer and npm
+- **PostgreSQL 17** (Local service on port `5432` or Docker container on port `5433`)
+- **Git**
 
-- Database: `recruitflow`
-- User: `postgres`
-- Password: `root`
+---
 
-Create the database if it does not already exist:
+## 🗄️ Database Setup
 
+Default PostgreSQL connection credentials:
+- **Host**: `localhost`
+- **Port**: `5432` (or `5433` if using Docker Compose)
+- **Database**: `recruitflow`
+- **User**: `postgres`
+- **Password**: `root`
+
+To create the database locally:
 ```sql
 CREATE DATABASE recruitflow;
 ```
 
-You can also run PostgreSQL with Docker:
+---
 
-```bash
-docker compose up -d postgres
-```
+## 🚀 Running Locally (Without Docker)
 
-## Backend
+### 1. Backend Setup
 
-Open a terminal at the repository root.
+Open a terminal in the project directory:
 
-### Windows PowerShell
-
-```powershell
-cd backend
-..\venv\Scripts\python.exe -m pip install -r requirements.txt
-..\venv\Scripts\python.exe -m app.db.recreate_db
-..\venv\Scripts\python.exe -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
-```
-
-If the root `venv` does not exist, create it first:
-
+#### Windows PowerShell:
 ```powershell
 cd backend
 python -m venv ..\venv
 ..\venv\Scripts\Activate.ps1
 python -m pip install -r requirements.txt
+
+# Provision database tables & seed initial data:
 python -m app.db.recreate_db
+python -m app.db.setup_hr_recruiters
+
+# Launch FastAPI server:
 python -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 ```
 
-### Linux or macOS
-
+#### Linux / macOS:
 ```bash
 cd backend
 python3 -m venv ../venv
 source ../venv/bin/activate
 pip install -r requirements.txt
+
+# Provision database tables & seed initial data:
 python -m app.db.recreate_db
+python -m app.db.setup_hr_recruiters
+
+# Launch FastAPI server:
 uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 ```
 
 Backend URLs:
+- **API Base**: `http://localhost:8000`
+- **Swagger UI**: `http://localhost:8000/docs`
+- **ReDoc**: `http://localhost:8000/redoc`
 
-- API: `http://localhost:8000`
-- Swagger UI: `http://localhost:8000/docs`
-- ReDoc: `http://localhost:8000/redoc`
+---
 
-## Frontend
+### 2. Frontend Setup
 
 Open a second terminal at the repository root:
 
@@ -78,57 +82,66 @@ npm install
 npm run dev
 ```
 
-Open `http://localhost:5173` in your browser.
+- **Application URL**: `http://localhost:5173` (Vite dev server proxies `/api` requests to `http://localhost:8000`)
 
-The Vite development server proxies `/api` requests to `http://localhost:8000`. Keep the backend running while using the frontend.
+---
 
-For a deployed frontend, the app uses the same-origin API path `/api/v1`. Configure the frontend server to proxy `/api` to the backend without changing the browser URL. To use a different backend URL, create `frontend/.env.production` before building:
+## 🐳 Running with Docker (Recommended)
 
-```env
-VITE_API_URL=http://your-server-host:8000/api/v1
-```
-
-Then rebuild and restart the frontend server:
-
-```powershell
-npm run build
-```
-
-## Test Login
-
-After running `recreate_db`, use:
-
-- Email: `admin@recruitflow.com`
-- Password: `AdminPassword123!`
-
-The clean test database contains one admin, one test client, one test job requirement containing the seeded JD, and one test candidate. `recreate_db` drops existing development data before recreating this test setup.
-
-## Uploads
-
-- Candidate CV upload supports PDF, DOC, DOCX, and TXT files.
-- Job description attachments support PDF, DOC, DOCX, and TXT files.
-- Maximum upload size is 15 MB.
-- Local uploads are stored under `backend/uploads/`.
-
-## Run Tests
-
-With the backend virtual environment activated:
-
-```powershell
-cd backend
-..\venv\Scripts\python.exe -m pytest -v
-```
-
-## Docker Option
-
-To run the complete stack with PostgreSQL, Redis, MinIO, backend, and frontend:
+To run the complete production-grade stack (PostgreSQL, Redis, MinIO, Backend, and Frontend) in one command:
 
 ```bash
-docker compose up --build
+docker compose up -d --build
 ```
 
-Then open:
+Access Points:
+- **Web Dashboard**: `http://localhost`
+- **Backend Swagger Docs**: `http://localhost:8000/docs`
+- **MinIO Object Storage Console**: `http://localhost:9001` (User: `minioadmin`, Pass: `minioadmin123`)
 
-- Dashboard: `http://localhost`
-- API docs: `http://localhost:8000/docs`
-- MinIO console: `http://localhost:9001`
+---
+
+## 👥 Default Login Accounts
+
+### 1. Super Admin
+- **Email**: `admin@recruitflow.com`
+- **Password**: `AdminPassword123!`
+
+### 2. HR Recruiters (Full Application Access)
+- **Madhavi Singh**: `madhavi.singh@ethxsoftcon.com` (Password: `Password123!`)
+- **Niky Sharma**: `niky.sharma@ethxsoftcon.com` (Password: `Password123!`)
+
+---
+
+## ✨ Core Features & Module Overview
+
+1. **Unified Candidate Search**:
+   - Search across **Candidate Name**, **Mobile / WhatsApp Number**, **Skills**, **Designation**, **Experience (Years)**, **Current Company**, and **Candidate Code**.
+   - Filter by **Experience Brackets** (`0-1`, `1-3`, `3-5`, `5-8`, `8-12`, `12+` years), **Lifecycle Status**, and **WhatsApp Outreach Status**.
+
+2. **Bulk CV & Entire Folder Upload**:
+   - Select multiple CV files or an **Entire Folder** (with recursive path normalization).
+   - Real-time progress bar with duplicate detection (`skip`, `update`, `create_anyway`).
+
+3. **Checkbox Selection & Batch Client Submission**:
+   - **Select All** / Individual candidate checkboxes.
+   - Floating Action Bar for batch submission to open **Job Requirements / Clients**.
+   - Date-wise submission tracking with client name, role, recruiter, and status.
+
+4. **WhatsApp Direct & Campaign Outreach**:
+   - Direct messaging with approved templates or custom text.
+   - Compliance consent management (`GRANTED`, `REVOKED`, `OPTED_OUT`).
+   - Meta Graph API integration.
+
+5. **Candidate Lifecycle & Date-Wise Timeline**:
+   - Full date-wise audit history of every candidate status change, CV submission, interview scorecard, and recruiter note.
+
+---
+
+## 🧪 Running Tests
+
+With the backend virtual environment activated:
+```powershell
+cd backend
+pytest -v
+```

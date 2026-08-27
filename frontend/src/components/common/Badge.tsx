@@ -69,6 +69,7 @@ export const PriorityBadge: React.FC<{ priority: string }> = ({ priority }) => {
 export const RoleBadge: React.FC<{ role: string }> = ({ role }) => {
   const r = role.toUpperCase();
   if (r === 'SUPER_ADMIN') return <Badge variant="purple">👑 Super Admin</Badge>;
+  if (r === 'HR_RECRUITER') return <Badge variant="success">💼 HR Recruiter</Badge>;
   if (r === 'ADMIN') return <Badge variant="indigo">🛡️ Admin</Badge>;
   if (r === 'RECRUITER') return <Badge variant="info">🎯 Recruiter</Badge>;
   if (r === 'TEAM_LEAD') return <Badge variant="warning">⭐ Team Lead</Badge>;

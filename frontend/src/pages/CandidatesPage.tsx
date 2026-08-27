@@ -9,7 +9,8 @@ import {
   Users, UserPlus, Upload, Search, Filter, Download,
   CheckCircle2, XCircle, AlertCircle, Phone, Mail,
   MapPin, Briefcase, Eye, ShieldCheck, ShieldAlert,
-  Clock, ExternalLink, RefreshCw, FileText, Check, AlertTriangle, MessageSquare, Trash2
+  Clock, ExternalLink, RefreshCw, FileText, Check, AlertTriangle, MessageSquare, Trash2,
+  Folder, FolderUp, Layers, Send, Share2, Building, CheckSquare, Square
 } from 'lucide-react';
 
 interface CandidatesPageProps {
@@ -25,12 +26,22 @@ export const CandidatesPage: React.FC<CandidatesPageProps> = ({ onViewCandidateP
   const [statusFilter, setStatusFilter] = useState('');
   const [skillFilter, setSkillFilter] = useState('');
   const [waEligibleFilter, setWaEligibleFilter] = useState<string>('all');
+  const [experienceRangeFilter, setExperienceRangeFilter] = useState<string>('all');
   
   // Modals
   const [showAddModal, setShowAddModal] = useState(false);
   const [showBulkModal, setShowBulkModal] = useState(false);
   const [showConsentModal, setShowConsentModal] = useState(false);
   const [selectedCandidate, setSelectedCandidate] = useState<Candidate | null>(null);
+
+  // Checkbox Selection & Submission State
+  const [selectedCandidateIds, setSelectedCandidateIds] = useState<string[]>([]);
+  const [showSubmitModal, setShowSubmitModal] = useState(false);
+  const [requirements, setRequirements] = useState<any[]>([]);
+  const [selectedRequirementId, setSelectedRequirementId] = useState<string>('');
+  const [submissionRemarks, setSubmissionRemarks] = useState<string>('');
+  const [isSubmittingBatch, setIsSubmittingBatch] = useState<boolean>(false);
+  const [candidateIdsToSubmit, setCandidateIdsToSubmit] = useState<string[]>([]);
 
   // Single CV Extraction State
   const [isExtracting, setIsExtracting] = useState(false);
@@ -68,9 +79,17 @@ export const CandidatesPage: React.FC<CandidatesPageProps> = ({ onViewCandidateP
   const [duplicateAction, setDuplicateAction] = useState('skip');
   const [isBulkProcessing, setIsBulkProcessing] = useState(false);
   const [bulkSummary, setBulkSummary] = useState<BulkCVUploadSummaryResponse | null>(null);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [processedCount, setProcessedCount] = useState(0);
+  const [currentBatchNum, setCurrentBatchNum] = useState(0);
+  const [totalBatchCount, setTotalBatchCount] = useState(0);
+  const [liveSuccessCount, setLiveSuccessCount] = useState(0);
+  const [liveDupCount, setLiveDupCount] = useState(0);
+  const [liveFailCount, setLiveFailCount] = useState(0);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const bulkFileInputRef = useRef<HTMLInputElement>(null);
+  const bulkFolderInputRef = useRef<HTMLInputElement>(null);
 
   const fetchCandidates = async () => {
     try {
@@ -82,6 +101,25 @@ export const CandidatesPage: React.FC<CandidatesPageProps> = ({ onViewCandidateP
       if (skillFilter) params.append('skill', skillFilter);
       if (waEligibleFilter === 'eligible') params.append('whatsapp_eligible', 'true');
       if (waEligibleFilter === 'ineligible') params.append('whatsapp_eligible', 'false');
+      
+      if (experienceRangeFilter === '0-1') {
+        params.append('min_experience', '0');
+        params.append('max_experience', '1');
+      } else if (experienceRangeFilter === '1-3') {
+        params.append('min_experience', '1');
+        params.append('max_experience', '3');
+      } else if (experienceRangeFilter === '3-5') {
+        params.append('min_experience', '3');
+        params.append('max_experience', '5');
+      } else if (experienceRangeFilter === '5-8') {
+        params.append('min_experience', '5');
+        params.append('max_experience', '8');
+      } else if (experienceRangeFilter === '8-12') {
+        params.append('min_experience', '8');
+        params.append('max_experience', '12');
+      } else if (experienceRangeFilter === '12+') {
+        params.append('min_experience', '12');
+      }
       
       const res = await fetch(url + params.toString(), {
         headers: { Authorization: `Bearer ${token}` }
@@ -97,9 +135,96 @@ export const CandidatesPage: React.FC<CandidatesPageProps> = ({ onViewCandidateP
     }
   };
 
+  const fetchRequirements = async () => {
+    try {
+      const res = await fetch('/api/v1/requirements?status=OPEN', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setRequirements(data);
+        if (data.length > 0 && !selectedRequirementId) {
+          setSelectedRequirementId(data[0].id);
+        }
+      }
+    } catch (err) {
+      console.error('Failed to fetch requirements:', err);
+    }
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedCandidateIds.length === candidates.length && candidates.length > 0) {
+      setSelectedCandidateIds([]);
+    } else {
+      setSelectedCandidateIds(candidates.map((c) => c.id));
+    }
+  };
+
+  const toggleSelectCandidate = (id: string) => {
+    setSelectedCandidateIds((prev) =>
+      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
+    );
+  };
+
+  const handleOpenSubmitModal = (ids?: string[]) => {
+    const targetIds = ids && ids.length > 0 ? ids : selectedCandidateIds;
+    if (!targetIds.length) {
+      alert('Please select at least one candidate to submit.');
+      return;
+    }
+    setCandidateIdsToSubmit(targetIds);
+    setShowSubmitModal(true);
+    fetchRequirements();
+  };
+
+  const handleExecuteBatchSubmission = async () => {
+    if (!selectedRequirementId || !candidateIdsToSubmit.length) {
+      alert('Please select a target job requirement.');
+      return;
+    }
+
+    try {
+      setIsSubmittingBatch(true);
+      const res = await apiFetch('/api/v1/submissions/batch', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          candidate_ids: candidateIdsToSubmit,
+          requirement_id: selectedRequirementId,
+          remarks: submissionRemarks || undefined
+        })
+      });
+
+      if (!res.ok) {
+        const err = await res.json();
+        alert(err.detail || 'Failed to submit candidates.');
+        return;
+      }
+
+      const result = await res.json();
+      alert(
+        `Successfully submitted ${result.submitted_count} candidate(s) to client!` +
+          (result.skipped_count > 0 ? ` (${result.skipped_count} skipped/already submitted)` : '')
+      );
+
+      setShowSubmitModal(false);
+      setSelectedCandidateIds([]);
+      setSubmissionRemarks('');
+      fetchCandidates();
+    } catch (err) {
+      console.error('Submission error:', err);
+      alert('Encountered an error submitting candidate(s).');
+    } finally {
+      setIsSubmittingBatch(false);
+    }
+  };
+
   useEffect(() => {
     fetchCandidates();
-  }, [search, statusFilter, skillFilter, waEligibleFilter]);
+  }, [search, statusFilter, skillFilter, waEligibleFilter, experienceRangeFilter]);
 
   useEffect(() => {
     setSearch(initialSearch);
@@ -202,34 +327,115 @@ export const CandidatesPage: React.FC<CandidatesPageProps> = ({ onViewCandidateP
     }
   };
 
-  // Bulk Upload
+  // Filter supported CV files
+  const filterSupportedCVFiles = (filesList: FileList | File[]): File[] => {
+    const validExts = ['.pdf', '.doc', '.docx', '.txt'];
+    const arr = Array.from(filesList);
+    return arr.filter((file) => {
+      const ext = '.' + (file.name.split('.').pop() || '').toLowerCase();
+      return validExts.includes(ext) && !file.name.startsWith('.');
+    });
+  };
+
+  const handleFolderSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      const valid = filterSupportedCVFiles(e.target.files);
+      setBulkFiles(valid);
+      setBulkSummary(null);
+    }
+  };
+
+  const handleFilesSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      const valid = filterSupportedCVFiles(e.target.files);
+      setBulkFiles(valid);
+      setBulkSummary(null);
+    }
+  };
+
+  // Chunked Batch Bulk Upload
   const handleBulkUpload = async () => {
     if (!bulkFiles.length) return;
 
+    const BATCH_SIZE = 20; // Upload 20 files per chunk for fast, reliable parsing
+    const totalFiles = bulkFiles.length;
+    const totalBatches = Math.ceil(totalFiles / BATCH_SIZE);
+
+    setIsBulkProcessing(true);
+    setUploadProgress(0);
+    setProcessedCount(0);
+    setCurrentBatchNum(0);
+    setTotalBatchCount(totalBatches);
+    setLiveSuccessCount(0);
+    setLiveDupCount(0);
+    setLiveFailCount(0);
+
+    const aggregatedSummary: BulkCVUploadSummaryResponse = {
+      total_uploaded: totalFiles,
+      successfully_processed: 0,
+      failed_count: 0,
+      duplicates_detected: 0,
+      new_candidates_created: 0,
+      whatsapp_eligible_count: 0,
+      consent_required_count: 0,
+      invalid_numbers_count: 0,
+      items: []
+    };
+
     try {
-      setIsBulkProcessing(true);
-      const data = new FormData();
-      bulkFiles.forEach(f => data.append('files', f));
-      data.append('duplicate_action', duplicateAction);
+      for (let i = 0; i < totalBatches; i++) {
+        setCurrentBatchNum(i + 1);
+        const start = i * BATCH_SIZE;
+        const end = Math.min(start + BATCH_SIZE, totalFiles);
+        const chunk = bulkFiles.slice(start, end);
 
-      const res = await apiFetch('/api/v1/candidates/bulk-upload', {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
-        body: data
-      });
+        const data = new FormData();
+        chunk.forEach((f) => data.append('files', f));
+        data.append('duplicate_action', duplicateAction);
 
-      if (!res.ok) {
-        const err = await res.json();
-        alert(err.detail || 'Failed to process bulk upload.');
-        return;
+        try {
+          const res = await apiFetch('/api/v1/candidates/bulk-upload', {
+            method: 'POST',
+            headers: { Authorization: `Bearer ${token}` },
+            body: data
+          });
+
+          if (res.ok) {
+            const batchSummary: BulkCVUploadSummaryResponse = await res.json();
+            aggregatedSummary.successfully_processed += (batchSummary.successfully_processed || 0);
+            aggregatedSummary.duplicates_detected += (batchSummary.duplicates_detected || 0);
+            aggregatedSummary.failed_count += (batchSummary.failed_count || 0);
+            aggregatedSummary.new_candidates_created += (batchSummary.new_candidates_created || 0);
+            aggregatedSummary.whatsapp_eligible_count += (batchSummary.whatsapp_eligible_count || 0);
+            aggregatedSummary.consent_required_count += (batchSummary.consent_required_count || 0);
+            aggregatedSummary.invalid_numbers_count += (batchSummary.invalid_numbers_count || 0);
+            if (batchSummary.items && Array.isArray(batchSummary.items)) {
+              aggregatedSummary.items.push(...batchSummary.items);
+            }
+
+            setLiveSuccessCount(aggregatedSummary.successfully_processed);
+            setLiveDupCount(aggregatedSummary.duplicates_detected);
+            setLiveFailCount(aggregatedSummary.failed_count);
+          } else {
+            aggregatedSummary.failed_count += chunk.length;
+            setLiveFailCount(aggregatedSummary.failed_count);
+          }
+        } catch (chunkErr) {
+          console.error(`Error processing batch ${i + 1}:`, chunkErr);
+          aggregatedSummary.failed_count += chunk.length;
+          setLiveFailCount(aggregatedSummary.failed_count);
+        }
+
+        const processedSoFar = end;
+        setProcessedCount(processedSoFar);
+        setUploadProgress(Math.round((processedSoFar / totalFiles) * 100));
       }
 
-      const summary: BulkCVUploadSummaryResponse = await res.json();
-      setBulkSummary(summary);
+      setBulkSummary(aggregatedSummary);
       fetchCandidates();
     } catch (err) {
-      console.error('Bulk error:', err);
-      alert('Failed to process bulk CV files.');
+      console.error('Bulk upload error:', err);
+      alert('Encountered an error during bulk resume upload.');
     } finally {
       setIsBulkProcessing(false);
     }
@@ -366,7 +572,7 @@ export const CandidatesPage: React.FC<CandidatesPageProps> = ({ onViewCandidateP
             <Search className="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
             <input
               type="text"
-              placeholder="Search candidate by name, email, phone, skills, designation..."
+              placeholder="Search candidate by name, phone, skills, designation, experience (e.g. 5 yrs), company..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="w-full pl-9 pr-4 py-2 bg-slate-950 border border-slate-800 rounded-lg text-xs text-white placeholder-slate-500 focus:outline-none focus:border-brand-500"
@@ -378,11 +584,26 @@ export const CandidatesPage: React.FC<CandidatesPageProps> = ({ onViewCandidateP
             placeholder="Filter by Skill..."
             value={skillFilter}
             onChange={(e) => setSkillFilter(e.target.value)}
-            className="w-40 px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-xs text-white placeholder-slate-500 focus:outline-none focus:border-brand-500 hidden sm:block"
+            className="w-36 px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-xs text-white placeholder-slate-500 focus:outline-none focus:border-brand-500 hidden sm:block"
           />
         </div>
 
-        <div className="flex items-center gap-3 w-full md:w-auto">
+        <div className="flex flex-wrap items-center gap-2.5 w-full md:w-auto">
+          {/* Experience Year-wise filter */}
+          <select
+            value={experienceRangeFilter}
+            onChange={(e) => setExperienceRangeFilter(e.target.value)}
+            className="px-3 py-2 bg-slate-950 border border-brand-500/30 rounded-lg text-xs text-brand-300 font-medium focus:outline-none focus:border-brand-500"
+          >
+            <option value="all">All Experience (Years)</option>
+            <option value="0-1">0 - 1 Years (Fresher)</option>
+            <option value="1-3">1 - 3 Years (Junior)</option>
+            <option value="3-5">3 - 5 Years (Mid-Level)</option>
+            <option value="5-8">5 - 8 Years (Senior)</option>
+            <option value="8-12">8 - 12 Years (Lead / Staff)</option>
+            <option value="12+">12+ Years (Principal / Exec)</option>
+          </select>
+
           {/* Candidate Status filter */}
           <select
             value={statusFilter}
@@ -408,12 +629,51 @@ export const CandidatesPage: React.FC<CandidatesPageProps> = ({ onViewCandidateP
             onChange={(e) => setWaEligibleFilter(e.target.value)}
             className="px-3 py-2 bg-slate-950 border border-emerald-500/30 rounded-lg text-xs text-emerald-300 font-medium focus:outline-none focus:border-emerald-500"
           >
-            <option value="all">All WhatsApp Statuses</option>
-            <option value="eligible">WhatsApp Eligible Only (Ready)</option>
-            <option value="ineligible">Consent Required / Ineligible</option>
+            <option value="all">All WhatsApp</option>
+            <option value="eligible">WhatsApp Ready</option>
+            <option value="ineligible">Consent Required</option>
           </select>
         </div>
       </div>
+
+      {/* Floating / Top Batch Action Bar */}
+      {selectedCandidateIds.length > 0 && (
+        <div className="bg-gradient-to-r from-brand-900/90 via-slate-900/95 to-slate-900/90 border border-brand-500/50 rounded-2xl p-4 shadow-2xl flex flex-wrap items-center justify-between gap-4 animate-in fade-in slide-in-from-top-3 duration-200">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-brand-500/20 text-brand-300 border border-brand-500/40 flex items-center justify-center font-extrabold text-sm shadow-inner">
+              {selectedCandidateIds.length}
+            </div>
+            <div>
+              <p className="text-sm font-bold text-white flex items-center gap-2">
+                {selectedCandidateIds.length} Candidate{selectedCandidateIds.length > 1 ? 's' : ''} Selected
+                <span className="px-2 py-0.5 bg-brand-500/20 text-brand-300 text-[10px] font-bold rounded-full border border-brand-500/30">
+                  Ready for Action
+                </span>
+              </p>
+              <p className="text-[11px] text-slate-400">
+                Submit directly to a client job requirement or execute batch outreach
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => handleOpenSubmitModal()}
+              className="flex items-center gap-2 px-5 py-2.5 bg-brand-600 hover:bg-brand-500 text-white rounded-xl text-xs font-bold transition shadow-lg shadow-brand-500/30 hover:scale-105 active:scale-95"
+            >
+              <Share2 className="w-4 h-4" />
+              <span>Submit to Client / Requirement</span>
+            </button>
+
+            <button
+              onClick={() => setSelectedCandidateIds([])}
+              className="px-3.5 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold rounded-xl border border-slate-700 transition"
+            >
+              Deselect All
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Candidate List Table */}
       <div className="bg-slate-900/80 border border-slate-800 rounded-xl overflow-hidden shadow-xl">
@@ -421,6 +681,14 @@ export const CandidatesPage: React.FC<CandidatesPageProps> = ({ onViewCandidateP
           <table className="w-full text-left text-xs text-slate-300">
             <thead className="bg-slate-950/80 text-slate-400 font-bold uppercase tracking-wider border-b border-slate-800 text-[11px]">
               <tr>
+                <th className="py-3.5 px-3 w-10 text-center">
+                  <input
+                    type="checkbox"
+                    checked={selectedCandidateIds.length === candidates.length && candidates.length > 0}
+                    onChange={toggleSelectAll}
+                    className="w-4 h-4 rounded border-slate-700 bg-slate-900 text-brand-600 focus:ring-brand-500 cursor-pointer"
+                  />
+                </th>
                 <th className="py-3.5 px-4">Candidate</th>
                 <th className="py-3.5 px-4">Contact & WhatsApp</th>
                 <th className="py-3.5 px-4">Experience & Role</th>
@@ -433,14 +701,14 @@ export const CandidatesPage: React.FC<CandidatesPageProps> = ({ onViewCandidateP
             <tbody className="divide-y divide-slate-800/60 font-medium">
               {loading ? (
                 <tr>
-                  <td colSpan={7} className="py-12 text-center text-slate-500">
+                  <td colSpan={8} className="py-12 text-center text-slate-500">
                     <RefreshCw className="w-6 h-6 animate-spin mx-auto mb-2 text-brand-400" />
                     Loading candidates...
                   </td>
                 </tr>
               ) : candidates.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="py-12 text-center text-slate-500">
+                  <td colSpan={8} className="py-12 text-center text-slate-500">
                     <Users className="w-8 h-8 mx-auto mb-2 opacity-30" />
                     No candidates found matching your criteria.
                   </td>
@@ -450,9 +718,25 @@ export const CandidatesPage: React.FC<CandidatesPageProps> = ({ onViewCandidateP
                   const isEligible = cand.whatsapp_eligibility?.is_eligible;
                   const consentSt = cand.whatsapp_consent_status;
                   const isOptedOut = cand.whatsapp_opt_out_status;
+                  const isChecked = selectedCandidateIds.includes(cand.id);
 
                   return (
-                    <tr key={cand.id} className="hover:bg-slate-800/40 transition">
+                    <tr
+                      key={cand.id}
+                      className={`hover:bg-slate-800/40 transition ${
+                        isChecked ? 'bg-brand-950/20 border-l-2 border-brand-500' : ''
+                      }`}
+                    >
+                      {/* Checkbox Column */}
+                      <td className="py-3.5 px-3 text-center">
+                        <input
+                          type="checkbox"
+                          checked={isChecked}
+                          onChange={() => toggleSelectCandidate(cand.id)}
+                          className="w-4 h-4 rounded border-slate-700 bg-slate-900 text-brand-600 focus:ring-brand-500 cursor-pointer"
+                        />
+                      </td>
+
                       {/* Candidate Column */}
                       <td className="py-3.5 px-4">
                         <div className="flex items-center gap-3">
@@ -481,7 +765,7 @@ export const CandidatesPage: React.FC<CandidatesPageProps> = ({ onViewCandidateP
                           </div>
                           <div className="flex items-center gap-1.5 text-slate-300">
                             <Phone className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                            <span>{cand.whatsapp_number || cand.phone || '—'}</span>
+                            <span className="font-semibold text-slate-200">{cand.whatsapp_number || cand.phone || '—'}</span>
                           </div>
                         </div>
                       </td>
@@ -498,7 +782,7 @@ export const CandidatesPage: React.FC<CandidatesPageProps> = ({ onViewCandidateP
                       <td className="py-3.5 px-4">
                         <div className="flex flex-wrap gap-1 max-w-[200px]">
                           {(cand.skills || []).slice(0, 3).map((s: string, idx: number) => (
-                            <span key={idx} className="px-1.5 py-0.5 bg-slate-800 text-slate-300 text-[10px] rounded border border-slate-700">
+                            <span key={idx} className="px-1.5 py-0.5 bg-slate-800 text-slate-300 text-[10px] rounded border border-slate-700 font-medium">
                               {s}
                             </span>
                           ))}
@@ -546,7 +830,17 @@ export const CandidatesPage: React.FC<CandidatesPageProps> = ({ onViewCandidateP
 
                       {/* Actions */}
                       <td className="py-3.5 px-4 text-right">
-                        <div className="flex items-center justify-end gap-2">
+                        <div className="flex items-center justify-end gap-1.5">
+                          {/* Submit to Client Button */}
+                          <button
+                            onClick={() => handleOpenSubmitModal([cand.id])}
+                            title="Submit to Client / Requirement"
+                            className="flex items-center gap-1 px-2 py-1 bg-emerald-950/40 hover:bg-emerald-900/80 text-emerald-300 hover:text-white rounded-lg border border-emerald-800/60 text-xs font-semibold transition"
+                          >
+                            <Share2 className="w-3.5 h-3.5" />
+                            <span>Submit</span>
+                          </button>
+
                           {/* Download CV */}
                           <button
                             onClick={() => handleDownloadCV(cand.id, cand.latest_document?.file_name)}
@@ -565,15 +859,15 @@ export const CandidatesPage: React.FC<CandidatesPageProps> = ({ onViewCandidateP
                             <span>Profile</span>
                           </button>
 
-                          {user && ['SUPER_ADMIN', 'ADMIN'].includes(user.role) && (
-                            <button
-                              onClick={() => handleDeleteCandidate(cand)}
-                              title="Delete candidate"
-                              className="p-1.5 bg-rose-950/40 hover:bg-rose-900/70 text-rose-300 hover:text-white rounded-lg border border-rose-800/60 transition"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
-                          )}
+                          {/* Delete Candidate */}
+                          <button
+                            onClick={() => handleDeleteCandidate(cand)}
+                            title="Delete candidate"
+                            className="flex items-center gap-1 px-2 py-1 bg-rose-950/40 hover:bg-rose-900/80 text-rose-300 hover:text-white rounded-lg border border-rose-800/60 text-xs font-semibold transition"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                            <span>Delete</span>
+                          </button>
                         </div>
                       </td>
                     </tr>
@@ -859,38 +1153,127 @@ export const CandidatesPage: React.FC<CandidatesPageProps> = ({ onViewCandidateP
 
             {!bulkSummary ? (
               <div className="space-y-4">
-                <div
-                  onClick={() => bulkFileInputRef.current?.click()}
-                  className="border-2 border-dashed border-slate-700 hover:border-brand-500 rounded-xl p-8 text-center cursor-pointer transition bg-slate-950/50"
-                >
-                  <input
-                    type="file"
-                    ref={bulkFileInputRef}
-                    onChange={(e) => {
-                      if (e.target.files) {
-                        setBulkFiles(Array.from(e.target.files));
-                      }
-                    }}
-                    multiple
-                    accept=".pdf,.doc,.docx,.txt"
-                    className="hidden"
-                  />
-                  <Upload className="w-8 h-8 text-brand-400 mx-auto mb-2 opacity-80" />
-                  <p className="text-xs font-bold text-white">Click to select multiple resume files</p>
-                  <p className="text-[11px] text-slate-500 mt-1">Supports PDF, DOC, DOCX (up to 50 files)</p>
-                  {bulkFiles.length > 0 && (
-                    <div className="mt-3 inline-block px-3 py-1 bg-brand-500/20 text-brand-300 text-xs font-bold border border-brand-500/40 rounded-full">
-                      {bulkFiles.length} files selected
+                {/* Hidden File Inputs */}
+                <input
+                  type="file"
+                  ref={bulkFolderInputRef}
+                  onChange={handleFolderSelect}
+                  // @ts-ignore
+                  webkitdirectory=""
+                  directory=""
+                  multiple
+                  className="hidden"
+                />
+                <input
+                  type="file"
+                  ref={bulkFileInputRef}
+                  onChange={handleFilesSelect}
+                  multiple
+                  accept=".pdf,.doc,.docx,.txt"
+                  className="hidden"
+                />
+
+                {/* Upload Options Selector Grid */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {/* Select Entire Folder Option */}
+                  <div
+                    onClick={() => !isBulkProcessing && bulkFolderInputRef.current?.click()}
+                    className={`border-2 border-dashed border-brand-500/50 hover:border-brand-400 bg-brand-950/20 hover:bg-brand-950/40 rounded-2xl p-6 text-center cursor-pointer transition flex flex-col items-center justify-center group ${
+                      isBulkProcessing ? 'opacity-50 pointer-events-none' : ''
+                    }`}
+                  >
+                    <div className="w-12 h-12 rounded-xl bg-brand-500/20 text-brand-400 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+                      <FolderUp className="w-6 h-6" />
                     </div>
-                  )}
+                    <p className="text-xs font-bold text-white">Select Entire Folder</p>
+                    <p className="text-[11px] text-slate-400 mt-1">Upload whole directory (up to 5,000+ CVs)</p>
+                    <span className="mt-3 px-3 py-1 bg-brand-500/20 text-brand-300 text-[10px] font-bold rounded-full border border-brand-500/30">
+                      📁 Recommended for Bulk Pool
+                    </span>
+                  </div>
+
+                  {/* Select Multiple Files Option */}
+                  <div
+                    onClick={() => !isBulkProcessing && bulkFileInputRef.current?.click()}
+                    className={`border-2 border-dashed border-slate-700 hover:border-slate-500 bg-slate-950/60 hover:bg-slate-900 rounded-2xl p-6 text-center cursor-pointer transition flex flex-col items-center justify-center group ${
+                      isBulkProcessing ? 'opacity-50 pointer-events-none' : ''
+                    }`}
+                  >
+                    <div className="w-12 h-12 rounded-xl bg-slate-800 text-slate-300 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+                      <FileText className="w-6 h-6" />
+                    </div>
+                    <p className="text-xs font-bold text-white">Select Multiple Files</p>
+                    <p className="text-[11px] text-slate-400 mt-1">Choose individual PDF, DOC, DOCX files</p>
+                    <span className="mt-3 px-3 py-1 bg-slate-800 text-slate-300 text-[10px] font-bold rounded-full border border-slate-700">
+                      📄 Multi-Select Files
+                    </span>
+                  </div>
                 </div>
 
+                {/* Selected Files Count & Status */}
+                {bulkFiles.length > 0 && (
+                  <div className="bg-slate-950 p-3 rounded-xl border border-slate-800 flex items-center justify-between">
+                    <div className="flex items-center gap-2.5">
+                      <Layers className="w-4 h-4 text-brand-400" />
+                      <div>
+                        <p className="text-xs font-bold text-slate-100">
+                          {bulkFiles.length.toLocaleString()} Resumes Ready to Process
+                        </p>
+                        <p className="text-[10px] text-slate-400">
+                          Will be parsed and uploaded in batches of 50 files for maximum reliability
+                        </p>
+                      </div>
+                    </div>
+                    {!isBulkProcessing && (
+                      <button
+                        type="button"
+                        onClick={() => setBulkFiles([])}
+                        className="text-[11px] text-rose-400 hover:text-rose-300 underline font-semibold"
+                      >
+                        Clear
+                      </button>
+                    )}
+                  </div>
+                )}
+
+                {/* Live Processing Progress Bar */}
+                {isBulkProcessing && (
+                  <div className="bg-slate-950 p-4 rounded-xl border border-brand-500/40 space-y-3 animate-in fade-in duration-200">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="font-bold text-white flex items-center gap-2">
+                        <RefreshCw className="w-3.5 h-3.5 text-brand-400 animate-spin" />
+                        Batch {currentBatchNum} of {totalBatchCount}
+                      </span>
+                      <span className="font-extrabold text-brand-400">{uploadProgress}%</span>
+                    </div>
+
+                    {/* Progress Track */}
+                    <div className="w-full bg-slate-800 h-2.5 rounded-full overflow-hidden">
+                      <div
+                        className="bg-gradient-to-r from-brand-600 via-sky-400 to-emerald-400 h-full transition-all duration-300 rounded-full shadow-lg shadow-brand-500/50"
+                        style={{ width: `${uploadProgress}%` }}
+                      />
+                    </div>
+
+                    <div className="flex items-center justify-between text-[11px] text-slate-400 pt-1">
+                      <span>{processedCount.toLocaleString()} of {bulkFiles.length.toLocaleString()} files processed</span>
+                      <div className="flex items-center gap-3">
+                        <span className="text-emerald-400 font-bold">✓ {liveSuccessCount} Success</span>
+                        <span className="text-amber-400 font-bold">⚠️ {liveDupCount} Dup</span>
+                        <span className="text-rose-400 font-bold">✕ {liveFailCount} Fail</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Duplicate Strategy Option */}
                 <div className="bg-slate-950 p-3 rounded-lg border border-slate-800 flex items-center justify-between">
                   <span className="text-xs text-slate-300 font-medium">Duplicate Resolution Strategy:</span>
                   <select
                     value={duplicateAction}
+                    disabled={isBulkProcessing}
                     onChange={(e) => setDuplicateAction(e.target.value)}
-                    className="px-2 py-1 bg-slate-900 border border-slate-700 rounded text-xs text-slate-200"
+                    className="px-2 py-1 bg-slate-900 border border-slate-700 rounded text-xs text-slate-200 disabled:opacity-50"
                   >
                     <option value="skip">Skip duplicates (Recommended)</option>
                     <option value="update">Update existing candidate skills</option>
@@ -901,8 +1284,9 @@ export const CandidatesPage: React.FC<CandidatesPageProps> = ({ onViewCandidateP
                 <div className="flex items-center justify-end gap-3 pt-2">
                   <button
                     type="button"
+                    disabled={isBulkProcessing}
                     onClick={() => setShowBulkModal(false)}
-                    className="px-4 py-2 text-xs font-semibold text-slate-400 hover:text-white"
+                    className="px-4 py-2 text-xs font-semibold text-slate-400 hover:text-white disabled:opacity-50"
                   >
                     Cancel
                   </button>
@@ -910,17 +1294,17 @@ export const CandidatesPage: React.FC<CandidatesPageProps> = ({ onViewCandidateP
                     type="button"
                     disabled={!bulkFiles.length || isBulkProcessing}
                     onClick={handleBulkUpload}
-                    className="px-5 py-2 bg-brand-600 hover:bg-brand-500 disabled:opacity-50 text-white text-xs font-bold rounded-lg shadow-lg flex items-center gap-2"
+                    className="px-6 py-2.5 bg-brand-600 hover:bg-brand-500 disabled:opacity-50 text-white text-xs font-bold rounded-xl shadow-lg shadow-brand-500/25 flex items-center gap-2 transition"
                   >
                     {isBulkProcessing ? (
                       <>
-                        <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                        <span>Processing {bulkFiles.length} Resumes...</span>
+                        <RefreshCw className="w-4 h-4 animate-spin" />
+                        <span>Uploading ({uploadProgress}%)...</span>
                       </>
                     ) : (
                       <>
-                        <Upload className="w-3.5 h-3.5" />
-                        <span>Upload & Process All</span>
+                        <Upload className="w-4 h-4" />
+                        <span>Upload & Process All ({bulkFiles.length.toLocaleString()} CVs)</span>
                       </>
                     )}
                   </button>
@@ -969,14 +1353,186 @@ export const CandidatesPage: React.FC<CandidatesPageProps> = ({ onViewCandidateP
 
                 <div className="flex justify-end pt-2">
                   <button
-                    onClick={() => setShowBulkModal(false)}
-                    className="px-5 py-2 bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold rounded-lg"
+                    onClick={() => {
+                      setShowBulkModal(false);
+                      setBulkFiles([]);
+                      setBulkSummary(null);
+                      fetchCandidates();
+                    }}
+                    className="px-6 py-2.5 bg-brand-600 hover:bg-brand-500 text-white text-xs font-bold rounded-xl shadow-lg shadow-brand-500/25 transition"
                   >
-                    Done
+                    ✓ View Candidates in Talent Pool
                   </button>
                 </div>
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Submit Candidate(s) to Client / Requirement */}
+      {showSubmitModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm p-4 animate-in fade-in duration-150">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-xl w-full p-6 shadow-2xl space-y-5 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-brand-500/20 text-brand-400 flex items-center justify-center">
+                  <Share2 className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-white">Submit to Client / Requirement</h3>
+                  <p className="text-xs text-slate-400">Forward candidate profiles to active client positions</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowSubmitModal(false)}
+                className="text-slate-400 hover:text-white text-lg font-bold p-1"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Selected Candidates Summary */}
+            <div className="bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-2">
+              <span className="text-xs font-bold text-slate-300 block uppercase tracking-wider">
+                Selected Candidate{candidateIdsToSubmit.length > 1 ? 's' : ''} ({candidateIdsToSubmit.length}):
+              </span>
+              <div className="flex flex-wrap gap-2 max-h-32 overflow-y-auto pr-1">
+                {candidateIdsToSubmit.map((cid) => {
+                  const cand = candidates.find((c) => c.id === cid);
+                  return (
+                    <div
+                      key={cid}
+                      className="px-2.5 py-1 bg-slate-900 border border-slate-700 rounded-lg text-xs text-slate-200 flex items-center gap-1.5"
+                    >
+                      <span className="font-semibold text-white">
+                        {cand ? `${cand.first_name} ${cand.last_name}` : cid}
+                      </span>
+                      {cand?.total_experience ? (
+                        <span className="text-[10px] text-slate-400">({cand.total_experience}y exp)</span>
+                      ) : null}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Target Job Requirement Picker */}
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-slate-300 flex items-center justify-between">
+                <span>Select Target Job Requirement & Client *</span>
+                {requirements.length === 0 && (
+                  <span className="text-amber-400 text-[11px]">Loading active requirements...</span>
+                )}
+              </label>
+              <select
+                value={selectedRequirementId}
+                onChange={(e) => setSelectedRequirementId(e.target.value)}
+                className="w-full px-3 py-2.5 bg-slate-950 border border-slate-700 rounded-xl text-xs text-white focus:outline-none focus:border-brand-500"
+              >
+                {requirements.length === 0 ? (
+                  <option value="">No open job requirements found</option>
+                ) : (
+                  requirements.map((r: any) => (
+                    <option key={r.id} value={r.id}>
+                      {r.req_code} — {r.job_title} ({r.client_name || 'Client'}) • {r.openings_count || 1} Opening(s)
+                    </option>
+                  ))
+                )}
+              </select>
+            </div>
+
+            {/* Selected Requirement Details Preview Card */}
+            {selectedRequirementId && (
+              (() => {
+                const req = requirements.find((r: any) => r.id === selectedRequirementId);
+                if (!req) return null;
+                return (
+                  <div className="bg-brand-950/20 border border-brand-500/30 rounded-xl p-3.5 space-y-2 text-xs">
+                    <div className="flex items-center justify-between">
+                      <span className="font-bold text-brand-300 text-sm">{req.job_title}</span>
+                      <span className="px-2 py-0.5 bg-brand-500/20 text-brand-300 rounded text-[10px] font-bold uppercase">
+                        {req.req_code}
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 text-[11px] text-slate-300">
+                      <div>
+                        <span className="text-slate-500 block">Client:</span>
+                        <strong className="text-white">{req.client_name || '—'}</strong>
+                      </div>
+                      <div>
+                        <span className="text-slate-500 block">Experience Required:</span>
+                        <span>{req.experience_min} - {req.experience_max} Years</span>
+                      </div>
+                      <div>
+                        <span className="text-slate-500 block">Location & Mode:</span>
+                        <span>{req.location || 'Remote'} ({req.work_mode || 'HYBRID'})</span>
+                      </div>
+                      <div>
+                        <span className="text-slate-500 block">Department:</span>
+                        <span>{req.department || 'Engineering'}</span>
+                      </div>
+                    </div>
+                    {req.required_skills && req.required_skills.length > 0 && (
+                      <div className="pt-1">
+                        <span className="text-slate-500 text-[10px] block mb-1">Required Skills:</span>
+                        <div className="flex flex-wrap gap-1">
+                          {req.required_skills.map((sk: string, i: number) => (
+                            <span key={i} className="px-1.5 py-0.5 bg-slate-900 border border-slate-700 text-slate-300 rounded text-[10px]">
+                              {sk}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })()
+            )}
+
+            {/* Recruiter Remarks / Pitch Notes */}
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-slate-300">
+                Recruiter Remarks / Submission Notes (Optional)
+              </label>
+              <textarea
+                rows={3}
+                placeholder="e.g., Screened candidates for technical fit and immediately available with required notice period..."
+                value={submissionRemarks}
+                onChange={(e) => setSubmissionRemarks(e.target.value)}
+                className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-brand-500"
+              />
+            </div>
+
+            {/* Submission Actions */}
+            <div className="flex items-center justify-end gap-3 pt-2 border-t border-slate-800">
+              <button
+                type="button"
+                disabled={isSubmittingBatch}
+                onClick={() => setShowSubmitModal(false)}
+                className="px-4 py-2 text-xs font-semibold text-slate-400 hover:text-white disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={isSubmittingBatch || !selectedRequirementId}
+                onClick={handleExecuteBatchSubmission}
+                className="flex items-center gap-2 px-6 py-2.5 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white text-xs font-bold rounded-xl shadow-lg shadow-emerald-500/25 transition"
+              >
+                {isSubmittingBatch ? (
+                  <>
+                    <RefreshCw className="w-4 h-4 animate-spin" />
+                    <span>Submitting to Client...</span>
+                  </>
+                ) : (
+                  <>
+                    <Share2 className="w-4 h-4" />
+                    <span>Submit {candidateIdsToSubmit.length} Candidate{candidateIdsToSubmit.length > 1 ? 's' : ''}</span>
+                  </>
+                )}
+              </button>
+            </div>
           </div>
         </div>
       )}

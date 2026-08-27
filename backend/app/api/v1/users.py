@@ -31,7 +31,7 @@ def get_recruiters(
 ):
     """Available to any authenticated user to populate recruiter dropdowns."""
     return db.query(User).filter(
-        User.role.in_([RoleEnum.RECRUITER, RoleEnum.ADMIN, RoleEnum.SUPER_ADMIN]),
+        User.role.in_([RoleEnum.HR_RECRUITER, RoleEnum.RECRUITER, RoleEnum.ADMIN, RoleEnum.SUPER_ADMIN]),
         User.is_active == True
     ).all()
 

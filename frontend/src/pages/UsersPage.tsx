@@ -85,7 +85,7 @@ export const UsersPage: React.FC = () => {
     }
   };
 
-  const canManageUsers = hasRole(['SUPER_ADMIN', 'ADMIN']);
+  const canManageUsers = hasRole(['SUPER_ADMIN', 'ADMIN', 'HR_RECRUITER']);
 
   return (
     <div className="space-y-6">
@@ -121,6 +121,7 @@ export const UsersPage: React.FC = () => {
             className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3.5 py-2 text-xs text-slate-100 focus:outline-none focus:border-brand-500"
           >
             <option value="">All Role Types</option>
+            <option value="HR_RECRUITER">HR Recruiter (Full Access)</option>
             <option value="SUPER_ADMIN">Super Admin</option>
             <option value="ADMIN">Admin</option>
             <option value="RECRUITER">Recruiter</option>
@@ -275,6 +276,7 @@ export const UsersPage: React.FC = () => {
                 onChange={(e) => setRole(e.target.value as Role)}
                 className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3.5 py-2 text-xs text-slate-100 focus:outline-none focus:border-brand-500"
               >
+                <option value="HR_RECRUITER">HR Recruiter (Full Access)</option>
                 <option value="RECRUITER">Recruiter</option>
                 <option value="TEAM_LEAD">Team Lead</option>
                 <option value="ADMIN">Admin</option>

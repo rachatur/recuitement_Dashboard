@@ -371,9 +371,49 @@ class CandidateResponse(CandidateBase):
     class Config:
         from_attributes = True
 
+class CandidateSubmissionItem(BaseModel):
+    id: str
+    submission_code: str
+    client_id: str
+    client_name: Optional[str] = None
+    requirement_id: str
+    requirement_title: Optional[str] = None
+    document_id: Optional[str] = None
+    recruiter_name: Optional[str] = None
+    submission_date: datetime
+    status: str
+    remarks: Optional[str] = None
+    client_viewed_at: Optional[datetime] = None
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+class CandidateInterviewItem(BaseModel):
+    id: str
+    client_name: Optional[str] = None
+    requirement_title: Optional[str] = None
+    round_number: int = 1
+    round_name: str = "Round 1"
+    interview_type: str = "VIRTUAL"
+    interview_date: datetime
+    interviewer_name: Optional[str] = None
+    status: str = "SCHEDULED"
+    notes: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+
+class BatchCVSubmissionCreate(BaseModel):
+    candidate_ids: List[str]
+    requirement_id: str
+    remarks: Optional[str] = None
+
 class CandidateDetailResponse(CandidateResponse):
     documents: List[CandidateDocumentResponse] = []
     status_history: List[CandidateStatusHistoryResponse] = []
+    submissions: List[CandidateSubmissionItem] = []
+    interviews: List[CandidateInterviewItem] = []
     submissions_count: int = 0
     interviews_count: int = 0
     offers_count: int = 0

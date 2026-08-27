@@ -26,13 +26,15 @@ export const LoginPage: React.FC = () => {
     }
   };
 
-  const handleQuickLogin = async (role: Role) => {
-    const p = DEMO_PERSONAS[role];
+  const handleQuickLogin = async (email: string) => {
+    const p = DEMO_PERSONAS.find((item) => item.email === email);
+    if (!p) return;
+    const pwd = p.email === 'admin@recruitflow.com' ? 'AdminPassword123!' : 'Password123!';
     setEmail(p.email);
-    setPassword(role === 'SUPER_ADMIN' ? 'AdminPassword123!' : 'Password123!');
+    setPassword(pwd);
     try {
-      await login(p.email, role === 'SUPER_ADMIN' ? 'AdminPassword123!' : 'Password123!');
-      showToast('success', 'Logged in as Demo Persona', `Signed in as ${p.name} (${role})`);
+      await login(p.email, pwd);
+      showToast('success', 'Logged in as HR / Admin', `Signed in as ${p.name}`);
     } catch (err: any) {
       showToast('error', 'Login Failed', err.response?.data?.detail || 'Could not log in');
     }
@@ -107,30 +109,29 @@ export const LoginPage: React.FC = () => {
             <div className="flex items-center gap-2 mb-3">
               <Sparkles className="w-4 h-4 text-brand-400" />
               <h4 className="text-xs font-bold text-slate-300 uppercase tracking-wider">
-                1-Click Persona Simulator
+                1-Click Quick Login
               </h4>
             </div>
             <p className="text-[11px] text-slate-400 mb-3">
-              Click any role below to instantly authenticate and evaluate role-based dashboards and permission scopes:
+              Click any configured user account below to instantly authenticate:
             </p>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              {(Object.keys(DEMO_PERSONAS) as Role[]).map((r) => {
-                const p = DEMO_PERSONAS[r];
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+              {DEMO_PERSONAS.map((p) => {
                 return (
                   <button
-                    key={r}
+                    key={p.id}
                     type="button"
-                    onClick={() => handleQuickLogin(r)}
+                    onClick={() => handleQuickLogin(p.email)}
                     className="p-2.5 rounded-xl border border-slate-800 bg-slate-950/60 hover:bg-brand-950/40 hover:border-brand-600/50 transition-all text-left group"
                   >
-                    <div className="flex items-center justify-between">
+                    <div className="flex items-center justify-between mb-1">
                       <span className="text-xs font-bold text-slate-200 group-hover:text-brand-300">
-                        {p.name.split('(')[0]}
+                        {p.name}
                       </span>
-                      <RoleBadge role={r} />
                     </div>
-                    <p className="text-[10px] text-slate-400 truncate mt-1">{p.desc}</p>
+                    <RoleBadge role={p.role} />
+                    <p className="text-[10px] text-slate-400 truncate mt-1.5">{p.desc}</p>
                   </button>
                 );
               })}

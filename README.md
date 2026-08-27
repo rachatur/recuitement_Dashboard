@@ -2,23 +2,44 @@
 
 ![RecruitFlow Platform](https://images.unsplash.com/photo-1551836022-d5d88e9218df?w=1200&auto=format&fit=crop&q=80)
 
-**RecruitFlow** is a production-grade, enterprise SaaS Recruitment Management and Applicant Tracking Platform (ATS) designed to manage the entire talent acquisition lifecycle: from client requirements creation, candidate sourcing, multi-version CV storage, client submissions pipeline, interview coordination, and offer release to candidate onboarding.
+**RecruitFlow** is a production-grade, enterprise SaaS Recruitment Management and Applicant Tracking Platform (ATS) designed to manage the entire talent acquisition lifecycle: from client requirements creation, candidate sourcing, multi-version CV storage, bulk folder parsing, client submissions pipeline, interview coordination, offer release, and WhatsApp outreach to candidate onboarding.
 
-For current local Windows, Linux, and macOS setup instructions, see [LOCAL_SETUP.md](LOCAL_SETUP.md).
+Repository: **[https://github.com/rachatur/recuitement_Dashboard](https://github.com/rachatur/recuitement_Dashboard)**
+
+For local Windows, Linux, and macOS setup instructions, see [LOCAL_SETUP.md](LOCAL_SETUP.md).
 
 Built with **FastAPI**, **SQLAlchemy**, **PostgreSQL 17**, **Vite**, **React 19**, **TypeScript**, and **Tailwind CSS**, RecruitFlow strictly enforces **never losing recruitment history** through immutable audit logs, sequential candidate timeline event tracking, and non-destructive document versioning.
 
 ---
 
-## 🚀 Key Architectural Pillars
+## 🚀 Key Architectural Pillars & Features
 
-1. **Immutable Recruitment History**: When candidate lifecycle status transitions from one stage to another, the system records an immutable entry in `candidate_status_history` storing timestamp, stage duration (hours), actor, old status, new status, and remarks.
-2. **Multi-Version CV Architecture**: Support for incremental resume versions (`Resume v1`, `Resume v2`, `Resume v3`). Prior versions are preserved permanently with file hashing and download endpoints.
-3. **Multi-Tier Role-Based Access Control (RBAC)**: 7 granular authorization levels enforced at both the FastAPI dependency layer and React UI layer.
-4. **Client Multi-Tenancy & Data Isolation**: Client and Hiring Manager users are scoped strictly to their own client organization. Cross-client candidate and requirement access is rejected with `403 Forbidden`.
-5. **Time-Series Analytics & Funnel Engine**: Calculates 9-stage conversion rates, drop-off percentages, daily/weekly/monthly velocity, time-to-screen, time-to-submit, client latency, and time-to-hire.
-6. **Regulatory Audit Trail**: Immutable logging of all actions with before/after JSON diffs, IP addresses, and user-agent metadata.
-7. **AI-Ready Intelligence Suite**: Built-in resume text parsing, candidate-job match score calculation with skill gap analysis, and duplicate detection.
+1. **Unified Candidate Search & Real-Time Filtering**:
+   - Search across **Candidate Name**, **Mobile / WhatsApp Number**, **Skills**, **Designation**, **Experience (Years)**, **Current Company**, and **Candidate Code**.
+   - Filter by **Experience Brackets** (`0-1`, `1-3`, `3-5`, `5-8`, `8-12`, `12+` years), **Lifecycle Status**, and **WhatsApp Outreach Status**.
+
+2. **Bulk CV Upload & Directory / Entire Folder Parsing**:
+   - Upload individual files or select an **Entire Folder** (handles 5,000+ files) with automatic subfolder path sanitization.
+   - Batch progress indicators, duplicate detection strategies (`skip`, `update`, `create_anyway`), and real-time counter metrics.
+
+3. **Checkbox Selection & Batch Client Submission**:
+   - **Select All** / Individual candidate checkboxes with a floating dynamic batch action bar.
+   - Forward one or multiple candidates directly to active client **Job Requirements** with recruiter notes and immediate notification dispatch.
+
+4. **Date-Wise Candidate & Client Submission History**:
+   - Detailed timeline tracking of every candidate submission with **Client Name**, **Role / Position**, **Submission Date**, **Submission Code**, **Status Badge**, **Recruiter Name**, and **Remarks**.
+   - Interview tracking and full date-wise status history.
+
+5. **WhatsApp Outreach & Compliance Engine**:
+   - Direct messaging and template broadcast via **Meta Graph Cloud API**.
+   - Strict compliance consent tracking (`GRANTED`, `REVOKED`, `OPTED_OUT`), audit logs, and conversation threads.
+
+6. **Multi-Tier Role-Based Access Control (RBAC)**:
+   - Dedicated roles including **Super Admin**, **HR Recruiter**, **Admin**, **Team Lead**, **Recruiter**, **Client**, and **Hiring Manager**.
+   - Pre-configured HR Recruiter credentials with full application access.
+
+7. **Immutable Recruitment History & Audit Trail**:
+   - Every candidate lifecycle transition, client submission, interview, and delete action is recorded in `audit_logs`, `candidate_status_history`, and `recruiter_activities`.
 
 ---
 
@@ -38,166 +59,55 @@ Built with **FastAPI**, **SQLAlchemy**, **PostgreSQL 17**, **Vite**, **React 19*
 
 ## 👥 Role-Based Access Control (RBAC) Matrix
 
-RecruitFlow supports 7 predefined enterprise roles:
-
-| Module / Action | Super Admin | Admin | Team Lead | Recruiter | Client | Hiring Mgr | Viewer |
+| Module / Action | Super Admin | HR Recruiter | Admin | Team Lead | Recruiter | Client | Hiring Mgr |
 |---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
-| **Dashboard & Top 10 KPIs** | ✅ | ✅ | ✅ | ✅ | ✅ *(Scoped)* | ✅ *(Scoped)* | ✅ |
-| **Client Management** | ✅ | ✅ | ✅ | View / Add | Scoped View | Scoped View | View |
-| **Job Requirements** | ✅ | ✅ | ✅ | ✅ | Scoped View | Scoped View | View |
-| **Candidate Talent Pool** | ✅ | ✅ | ✅ | ✅ | Scoped | Scoped | View |
-| **Multi-Version CV Upload** | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ |
-| **CV Submissions Pipeline** | ✅ | ✅ | ✅ | ✅ | Scoped View | Scoped View | View |
-| **Client Feedback / Scoring** | ✅ | ✅ | ✅ | View | ✅ | ✅ | View |
-| **Interview Coordination** | ✅ | ✅ | ✅ | ✅ | Scoped View | Scoped View | View |
-| **Offer Letter & Joining** | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ | View |
-| **Time-Series Analytics** | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ | View |
-| **Immutable Audit Logs** | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
-| **User & Tenant Management**| ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| **AI Resume Matcher** | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ |
+| **Dashboard & Top 10 KPIs** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ *(Scoped)* | ✅ *(Scoped)* |
+| **Client Management** | ✅ | ✅ | ✅ | ✅ | View / Add | Scoped View | Scoped View |
+| **Job Requirements** | ✅ | ✅ | ✅ | ✅ | ✅ | Scoped View | Scoped View |
+| **Candidate Talent Pool** | ✅ | ✅ | ✅ | ✅ | ✅ | Scoped | Scoped |
+| **Multi-Version & Folder Upload** | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ |
+| **CV Submissions Pipeline** | ✅ | ✅ | ✅ | ✅ | ✅ | Scoped View | Scoped View |
+| **Client Feedback / Scoring** | ✅ | ✅ | ✅ | ✅ | View | ✅ | ✅ |
+| **Interview Coordination** | ✅ | ✅ | ✅ | ✅ | ✅ | Scoped View | Scoped View |
+| **WhatsApp Outreach & Messaging** | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ |
+| **Candidate Deletion** | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
+| **Immutable Audit Logs** | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ |
 
 ---
 
 ## 🔑 Pre-Seeded Demonstration Accounts
 
-The platform includes pre-seeded accounts covering every persona. You can log in manually or use the **1-Click Role Simulator** in the top navigation bar.
-
-| Role | Email | Password | Scope / Context |
+| Role | Email | Password | Scope / Description |
 |---|---|---|---|
 | **Super Admin** | `admin@recruitflow.com` | `AdminPassword123!` | Full system governance |
+| **HR Recruiter** | `madhavi.singh@ethxsoftcon.com` | `Password123!` | Full application & recruitment access |
+| **HR Recruiter** | `niky.sharma@ethxsoftcon.com` | `Password123!` | Full application & recruitment access |
 | **Admin** | `sarah.admin@recruitflow.com` | `Password123!` | Operational administration |
 | **Team Lead** | `marcus.lead@recruitflow.com` | `Password123!` | Team oversight & analytics |
 | **Recruiter** | `alex.recruiter@recruitflow.com` | `Password123!` | Active talent sourcing |
 | **Client** | `rachel.client@novatech.com` | `Password123!` | NovaTech Cloud (Scoped) |
-| **Hiring Manager**| `david.hiring@apexfin.com` | `Password123!` | Apex Financial (Scoped) |
-| **Viewer** | `elena.viewer@recruitflow.com` | `Password123!` | Read-only executive auditing |
+| **Hiring Manager** | `david.hiring@apexfin.com` | `Password123!` | Apex Financial (Scoped) |
 
 ---
 
-## 📂 Project Directory Structure
+## ⚡ Quick Start with Docker
 
+To run the complete platform with a single command:
+
+```bash
+docker compose up -d --build
 ```
-recuitement_Dashboard/
-├── backend/
-│   ├── app/
-│   │   ├── api/v1/
-│   │   │   ├── auth.py             # Login, Refresh, Me endpoints
-│   │   │   ├── users.py            # User management
-│   │   │   ├── clients.py          # Client organizations
-│   │   │   ├── requirements.py     # Job mandates & openings
-│   │   │   ├── candidates.py       # Candidate pool & status advance
-│   │   │   ├── documents.py        # Multi-version CV upload & download
-│   │   │   ├── submissions.py      # CV submission pipeline & transitions
-│   │   │   ├── interviews.py       # Scheduling & evaluation scorecards
-│   │   │   ├── client_feedback.py  # Client decisions & ratings
-│   │   │   ├── offers.py           # Offers released & joining tracking
-│   │   │   ├── dashboard.py        # Top 10 KPIs, funnel, & leaderboards
-│   │   │   ├── analytics.py        # Time-series points & time metrics
-│   │   │   ├── audit_logs.py       # Global immutable audit trail
-│   │   │   ├── notifications.py    # Notifications dispatch & mark read
-│   │   │   └── ai_tools.py         # AI Parser, match score, dup check
-│   │   ├── core/
-│   │   │   ├── config.py           # Settings & environment variables
-│   │   │   ├── database.py         # SQLAlchemy engine & session factory
-│   │   │   ├── security.py         # Bcrypt hashing & JWT token generators
-│   │   │   ├── rbac.py             # Role dependencies & client scoping
-│   │   │   ├── audit.py            # Immutable audit logging engine
-│   │   │   └── storage.py          # S3/MinIO & local storage provider
-│   │   ├── models/                 # 18 SQLAlchemy PostgreSQL Models
-│   │   ├── schemas/                # Pydantic v2 validation schemas
-│   │   ├── services/               # Funnel, Metrics & AI engines
-│   │   ├── db/
-│   │   │   ├── create_pg_db.py     # PostgreSQL database provisioner
-│   │   │   ├── init_db.py          # Schema table creator
-│   │   │   └── seed_data.py        # Enterprise seed script
-│   │   └── main.py                 # FastAPI application root
-│   ├── tests/                      # Automated Pytest suite
-│   ├── Dockerfile
-│   └── requirements.txt
-│
-├── frontend/
-│   ├── src/
-│   │   ├── api/                    # Axios client with JWT interceptors
-│   │   ├── components/
-│   │   │   ├── common/             # Badges, Modals, Drawers, StatCards
-│   │   │   ├── candidates/         # CandidateTimeline & DocumentManager
-│   │   │   └── layout/             # Sidebar, Navbar (Role Switcher), AppLayout
-│   │   ├── contexts/               # AuthContext & NotificationContext
-│   │   ├── pages/                  # 11 Feature Pages
-│   │   ├── types/                  # TypeScript Data Models
-│   │   ├── App.tsx
-│   │   └── main.tsx
-│   ├── Dockerfile
-│   ├── nginx.conf
-│   └── package.json
-│
-├── docker-compose.yml
-├── .env.example
-└── README.md
-```
+
+- **Frontend Web Dashboard**: `http://localhost`
+- **Backend API & Swagger Docs**: `http://localhost:8000/docs`
+- **MinIO Storage Console**: `http://localhost:9001` (User: `minioadmin`, Pass: `minioadmin123`)
 
 ---
 
-## ⚡ Quick Start: Running Locally
+## 📄 License & Author
 
-### Prerequisites
-- **Python 3.11+**
-- **Node.js 18+** & **npm**
-- **PostgreSQL 17** (or run via Docker)
-
-### 1. Database Setup & Seeding
-
-1. Start PostgreSQL (Default: `localhost:5432`, user: `postgres`, password: `root`).
-2. Run database initialization and lifecycle seed data:
-
-```bash
-cd backend
-python -m venv venv
-# On Windows:
-.\venv\Scripts\activate
-# On Linux/macOS:
-source venv/bin/activate
-
-pip install -r requirements.txt
-
-# Create PostgreSQL database and populate full lifecycle seed data:
-python app/db/seed_data.py
-```
-
-### 2. Launch FastAPI Backend
-
-```bash
-# In the backend directory with venv activated:
-uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
-```
-- API Endpoint: `http://localhost:8000`
-- Interactive OpenAPI / Swagger UI: `http://localhost:8000/docs`
-- Redoc Documentation: `http://localhost:8000/redoc`
-
-### 3. Launch React Frontend
-
-```bash
-cd ../frontend
-npm install
-npm run dev
-```
-- Frontend Application URL: `http://localhost:5173`
-
----
-
-## 🐳 Docker Deployment
-
-To launch the full enterprise stack (PostgreSQL, MinIO, Redis, FastAPI Backend, and React Nginx Frontend) in one command:
-
-```bash
-docker-compose up --build
-```
-
-- Web Dashboard: `http://localhost`
-- Backend API Docs: `http://localhost:8000/docs`
-- MinIO Storage Console: `http://localhost:9001` (User: `minioadmin`, Pass: `minioadmin123`)
-
----
+Developed for enterprise talent acquisition and recruitment lifecycle management.  
+GitHub Repository: **[https://github.com/rachatur/recuitement_Dashboard](https://github.com/rachatur/recuitement_Dashboard)**
 
 ## 🧪 Automated Testing
 

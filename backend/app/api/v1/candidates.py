@@ -21,7 +21,8 @@ from app.schemas import (
     CandidateDocumentResponse, CandidateStatusHistoryResponse, CandidateStatusUpdateRequest,
     CVExtractionResponse, BulkCVProcessItem, BulkCVUploadSummaryResponse,
     WhatsAppEligibilityInfo, WhatsAppConsentRecordRequest, WhatsAppConsentRevokeRequest,
-    WhatsAppConsentResponse, WhatsAppOptOutCreateRequest, WhatsAppOptOutResponse
+    WhatsAppConsentResponse, WhatsAppOptOutCreateRequest, WhatsAppOptOutResponse,
+    CandidateSubmissionItem, CandidateInterviewItem
 )
 from app.services.cv_extraction_service import (
     extract_text_from_file, parse_candidate_from_text,
@@ -154,17 +155,29 @@ def get_candidates(
     if notice_days is not None:
         query = query.filter(Candidate.notice_period_days <= notice_days)
     if search:
-        query = query.filter(
-            Candidate.first_name.ilike(f"%{search}%") |
-            Candidate.last_name.ilike(f"%{search}%") |
-            Candidate.email.ilike(f"%{search}%") |
-            Candidate.phone.ilike(f"%{search}%") |
-            Candidate.whatsapp_number.ilike(f"%{search}%") |
-            Candidate.candidate_code.ilike(f"%{search}%") |
-            Candidate.current_company.ilike(f"%{search}%") |
-            Candidate.current_designation.ilike(f"%{search}%") |
-            cast(Candidate.skills, Text).ilike(f"%{search}%")
+        search_clean = search.strip()
+        search_filter = (
+            Candidate.first_name.ilike(f"%{search_clean}%") |
+            Candidate.last_name.ilike(f"%{search_clean}%") |
+            Candidate.email.ilike(f"%{search_clean}%") |
+            Candidate.phone.ilike(f"%{search_clean}%") |
+            Candidate.whatsapp_number.ilike(f"%{search_clean}%") |
+            Candidate.candidate_code.ilike(f"%{search_clean}%") |
+            Candidate.current_company.ilike(f"%{search_clean}%") |
+            Candidate.current_designation.ilike(f"%{search_clean}%") |
+            cast(Candidate.skills, Text).ilike(f"%{search_clean}%") |
+            cast(Candidate.total_experience, Text).ilike(f"%{search_clean}%") |
+            cast(Candidate.relevant_experience, Text).ilike(f"%{search_clean}%")
         )
+        exp_match = re.search(r'(\d+(?:\.\d+)?)\s*(?:years?|yrs?|yr|\+)?', search_clean, re.IGNORECASE)
+        if exp_match:
+            try:
+                exp_val = float(exp_match.group(1))
+                search_filter = search_filter | (Candidate.total_experience == exp_val) | (Candidate.relevant_experience == exp_val)
+            except Exception:
+                pass
+
+        query = query.filter(search_filter)
 
     candidates = query.order_by(Candidate.created_at.desc()).all()
     results = []
@@ -268,7 +281,7 @@ async def extract_cv_details(
 async def bulk_cv_upload(
     files: List[UploadFile] = File(...),
     duplicate_action: str = Form("skip"),  # "skip", "update", "create_anyway"
-    current_user: User = Depends(require_roles([RoleEnum.SUPER_ADMIN, RoleEnum.ADMIN, RoleEnum.RECRUITER, RoleEnum.TEAM_LEAD])),
+    current_user: User = Depends(require_roles([RoleEnum.SUPER_ADMIN, RoleEnum.HR_RECRUITER, RoleEnum.ADMIN, RoleEnum.RECRUITER, RoleEnum.TEAM_LEAD])),
     db: Session = Depends(get_db)
 ):
     """
@@ -291,7 +304,8 @@ async def bulk_cv_upload(
     now = datetime.now(timezone.utc)
 
     for file in files:
-        filename = file.filename or "unknown_cv.pdf"
+        raw_filename = file.filename or "unknown_cv.pdf"
+        filename = os.path.basename(raw_filename.replace("\\", "/"))
         try:
             storage_service.validate_file(file)
             content = await file.read()
@@ -628,10 +642,45 @@ def get_candidate_detail(
         ) for h in histories
     ]
 
+    sub_responses = [
+        CandidateSubmissionItem(
+            id=str(s.id),
+            submission_code=s.submission_code,
+            client_id=str(s.client_id),
+            client_name=s.client.name if s.client else None,
+            requirement_id=str(s.requirement_id),
+            requirement_title=s.requirement.job_title if s.requirement else None,
+            document_id=str(s.document_id) if s.document_id else None,
+            recruiter_name=s.recruiter.full_name if s.recruiter else None,
+            submission_date=s.submission_date,
+            status=s.status.value if hasattr(s.status, 'value') else str(s.status),
+            remarks=s.remarks,
+            client_viewed_at=s.client_viewed_at,
+            created_at=s.created_at
+        ) for s in (cand.submissions or [])
+    ]
+
+    interview_responses = [
+        CandidateInterviewItem(
+            id=str(i.id),
+            client_name=i.client.name if i.client else None,
+            requirement_title=i.requirement.job_title if i.requirement else None,
+            round_number=i.round_number or 1,
+            round_name=i.round_name or f"Round {i.round_number or 1}",
+            interview_type=i.interview_type.value if hasattr(i.interview_type, 'value') else str(i.interview_type),
+            interview_date=i.interview_date,
+            interviewer_name=i.interviewer_name,
+            status=i.status.value if hasattr(i.status, 'value') else str(i.status),
+            notes=i.notes
+        ) for i in (cand.interviews or [])
+    ]
+
     return CandidateDetailResponse(
         **base_resp.model_dump(),
         documents=doc_responses,
         status_history=hist_responses,
+        submissions=sub_responses,
+        interviews=interview_responses,
         submissions_count=len(cand.submissions),
         interviews_count=len(cand.interviews),
         offers_count=len(cand.offers),
@@ -854,7 +903,7 @@ def delete_candidate_document(
 @router.delete("/{cand_id}")
 def delete_candidate(
     cand_id: str,
-    current_user: User = Depends(require_roles([RoleEnum.SUPER_ADMIN, RoleEnum.ADMIN, RoleEnum.RECRUITER])),
+    current_user: User = Depends(require_roles([RoleEnum.SUPER_ADMIN, RoleEnum.HR_RECRUITER, RoleEnum.ADMIN, RoleEnum.RECRUITER])),
     db: Session = Depends(get_db)
 ):
     cand = db.query(Candidate).filter(Candidate.id == cand_id).first()

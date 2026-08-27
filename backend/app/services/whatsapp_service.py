@@ -1,6 +1,9 @@
 import re
 import uuid
+import json
 import logging
+import urllib.request
+import urllib.error
 from typing import Dict, Any, List, Optional, Tuple
 from datetime import datetime, timezone, timedelta
 from sqlalchemy.orm import Session
@@ -16,6 +19,61 @@ from app.models import (
 from app.services.cv_extraction_service import validate_whatsapp_eligibility
 
 logger = logging.getLogger(__name__)
+
+def send_real_whatsapp_cloud_api_message(
+    phone_number_id: str,
+    access_token: str,
+    recipient_phone: str,
+    message_text: str,
+    template_name: Optional[str] = None
+) -> Tuple[bool, str]:
+    """
+    Transmits a real WhatsApp message over Meta's Cloud API to the recipient's phone.
+    Endpoint: https://graph.facebook.com/v20.0/{phone_number_id}/messages
+    """
+    clean_recipient = re.sub(r"[^\d]", "", recipient_phone)
+    if len(clean_recipient) == 10:
+        clean_recipient = "91" + clean_recipient  # Default India country code
+
+    url = f"https://graph.facebook.com/v20.0/{phone_number_id}/messages"
+    headers = {
+        "Authorization": f"Bearer {access_token}",
+        "Content-Type": "application/json"
+    }
+
+    if template_name:
+        payload = {
+            "messaging_product": "whatsapp",
+            "to": clean_recipient,
+            "type": "template",
+            "template": {
+                "name": template_name,
+                "language": {"code": "en"}
+            }
+        }
+    else:
+        payload = {
+            "messaging_product": "whatsapp",
+            "recipient_type": "individual",
+            "to": clean_recipient,
+            "type": "text",
+            "text": {"preview_url": False, "body": message_text}
+        }
+
+    try:
+        req = urllib.request.Request(url, data=json.dumps(payload).encode("utf-8"), headers=headers, method="POST")
+        with urllib.request.urlopen(req, timeout=12) as response:
+            resp_body = json.loads(response.read().decode("utf-8"))
+            msg_id = resp_body.get("messages", [{}])[0].get("id", f"wamid.{uuid.uuid4().hex}")
+            logger.info(f"Successfully dispatched real WhatsApp message to {clean_recipient}: {msg_id}")
+            return True, msg_id
+    except urllib.error.HTTPError as e:
+        err_body = e.read().decode("utf-8")
+        logger.error(f"Meta WhatsApp API HTTP Error {e.code}: {err_body}")
+        return False, f"Meta Cloud API Error ({e.code}): {err_body}"
+    except Exception as e:
+        logger.error(f"Failed to transmit real WhatsApp message: {str(e)}")
+        return False, str(e)
 
 OPT_OUT_KEYWORDS = ["STOP", "UNSUBSCRIBE", "OPT OUT", "OPTOUT", "DO NOT CONTACT", "NO MORE MESSAGES", "CANCEL"]
 INTERESTED_KEYWORDS = ["YES", "INTERESTED", "SURE", "YEAH", "COUNT ME IN", "AGREE", "AVAILABLE", "INTERESTED IN ROLE"]

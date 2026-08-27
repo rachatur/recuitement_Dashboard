@@ -9,50 +9,44 @@ interface AuthContextType {
   isLoading: boolean;
   login: (email: string, password?: string) => Promise<void>;
   logout: () => void;
-  switchPersona: (role: Role) => Promise<void>;
+  switchPersona: (emailOrRole: string) => Promise<void>;
   hasRole: (roles: Role[]) => boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Quick persona demo credentials mapping
-export const DEMO_PERSONAS: Record<Role, { email: string; name: string; desc: string }> = {
-  SUPER_ADMIN: {
+export interface DemoPersona {
+  id: string;
+  email: string;
+  name: string;
+  role: Role;
+  desc: string;
+}
+
+// Active user personas for switcher
+export const DEMO_PERSONAS: DemoPersona[] = [
+  {
+    id: 'madhavi',
+    email: 'madhavi.singh@ethxsoftcon.com',
+    name: 'Madhavi Singh',
+    role: 'HR_RECRUITER',
+    desc: 'HR Recruiter • Full access to entire platform & WhatsApp outreach',
+  },
+  {
+    id: 'niky',
+    email: 'niky.sharma@ethxsoftcon.com',
+    name: 'Niky Sharma',
+    role: 'HR_RECRUITER',
+    desc: 'HR Recruiter • Full access to entire platform & WhatsApp outreach',
+  },
+  {
+    id: 'admin',
     email: 'admin@recruitflow.com',
     name: 'System Administrator',
-    desc: 'Full access to all tenants, users, audit logs, and configurations',
+    role: 'SUPER_ADMIN',
+    desc: 'Super Admin • Full access to all tenants & configurations',
   },
-  ADMIN: {
-    email: 'sarah.admin@recruitflow.com',
-    name: 'Sarah Jenkins (Admin)',
-    desc: 'Manage users, clients, requirements, candidates, and reports',
-  },
-  RECRUITER: {
-    email: 'alex.recruiter@recruitflow.com',
-    name: 'Alex Rivera (Recruiter)',
-    desc: 'Manage candidates, CV uploads, submissions, interviews, and status',
-  },
-  TEAM_LEAD: {
-    email: 'marcus.lead@recruitflow.com',
-    name: 'Marcus Sterling (Team Lead)',
-    desc: 'View team performance, review recruiter pipelines and activity',
-  },
-  CLIENT: {
-    email: 'david.client@novatech.com',
-    name: 'David Vance (NovaTech Client)',
-    desc: 'View submitted candidates for NovaTech, review CVs, submit feedback',
-  },
-  HIRING_MANAGER: {
-    email: 'rachel.hm@novatech.com',
-    name: 'Rachel Kim (NovaTech Hiring Manager)',
-    desc: 'Review assigned candidates, record technical interview feedback',
-  },
-  VIEWER: {
-    email: 'lisa.viewer@recruitflow.com',
-    name: 'Lisa Montgomery (Viewer)',
-    desc: 'Read-only access to permitted dashboards and recruitment metrics',
-  },
-};
+];
 
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
@@ -102,16 +96,17 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     localStorage.removeItem('recruitflow_user');
   };
 
-  const switchPersona = async (role: Role) => {
-    const target = DEMO_PERSONAS[role];
+  const switchPersona = async (emailOrRole: string) => {
+    const target = DEMO_PERSONAS.find((p) => p.email === emailOrRole || p.role === emailOrRole);
     if (target) {
-      await login(target.email);
+      const p = target.email === 'admin@recruitflow.com' ? 'AdminPassword123!' : 'Password123!';
+      await login(target.email, p);
     }
   };
 
   const hasRole = (allowedRoles: Role[]): boolean => {
     if (!user) return false;
-    if (user.role === 'SUPER_ADMIN') return true;
+    if (user.role === 'SUPER_ADMIN' || user.role === 'HR_RECRUITER') return true;
     return allowedRoles.includes(user.role);
   };
 

@@ -19,7 +19,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab }) => 
   const role = user?.role;
   const [waExpanded, setWaExpanded] = useState(true);
 
-  const isRoleAllowed = (allowedRoles: string[]) => !role || allowedRoles.includes(role);
+  const isRoleAllowed = (allowedRoles: string[]) =>
+    !role || role === 'SUPER_ADMIN' || role === 'HR_RECRUITER' || allowedRoles.includes(role);
 
   const isWhatsAppActive = activeTab.startsWith('whatsapp-');
 

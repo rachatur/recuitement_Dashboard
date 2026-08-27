@@ -18,6 +18,7 @@ def utc_now():
 
 class RoleEnum(str, enum.Enum):
     SUPER_ADMIN = "SUPER_ADMIN"
+    HR_RECRUITER = "HR_RECRUITER"
     ADMIN = "ADMIN"
     RECRUITER = "RECRUITER"
     TEAM_LEAD = "TEAM_LEAD"

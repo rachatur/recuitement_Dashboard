@@ -10,6 +10,7 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
 
 class RoleEnum(str, enum.Enum):
     SUPER_ADMIN = "SUPER_ADMIN"
+    HR_RECRUITER = "HR_RECRUITER"
     ADMIN = "ADMIN"
     RECRUITER = "RECRUITER"
     TEAM_LEAD = "TEAM_LEAD"
@@ -54,11 +55,11 @@ class RoleChecker:
         self.allowed_roles = allowed_roles
 
     def __call__(self, user = Depends(get_current_active_user)):
-        # SUPER_ADMIN has access to everything
-        if user.role == RoleEnum.SUPER_ADMIN.value or user.role == RoleEnum.SUPER_ADMIN:
+        # SUPER_ADMIN and HR_RECRUITER have full unrestricted access to all application features
+        user_role = str(user.role.value if hasattr(user.role, 'value') else user.role)
+        if user_role in [RoleEnum.SUPER_ADMIN.value, RoleEnum.SUPER_ADMIN, RoleEnum.HR_RECRUITER.value, RoleEnum.HR_RECRUITER]:
             return user
             
-        user_role = str(user.role.value if hasattr(user.role, 'value') else user.role)
         allowed = [r.value if hasattr(r, 'value') else str(r) for r in self.allowed_roles]
         
         if user_role not in allowed:
@@ -77,7 +78,7 @@ def verify_client_access(user, client_id: str):
     they can only access data belonging to their assigned client_id.
     """
     user_role = str(user.role.value if hasattr(user.role, 'value') else user.role)
-    if user_role in [RoleEnum.SUPER_ADMIN.value, RoleEnum.ADMIN.value, RoleEnum.TEAM_LEAD.value, RoleEnum.RECRUITER.value]:
+    if user_role in [RoleEnum.SUPER_ADMIN.value, RoleEnum.HR_RECRUITER.value, RoleEnum.ADMIN.value, RoleEnum.TEAM_LEAD.value, RoleEnum.RECRUITER.value]:
         return True
     
     if user_role in [RoleEnum.CLIENT.value, RoleEnum.HIRING_MANAGER.value]:

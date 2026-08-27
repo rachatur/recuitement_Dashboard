@@ -1,5 +1,6 @@
 export type Role =
   | 'SUPER_ADMIN'
+  | 'HR_RECRUITER'
   | 'ADMIN'
   | 'RECRUITER'
   | 'TEAM_LEAD'
@@ -294,6 +295,8 @@ export interface Candidate {
   latest_document?: CandidateDocument | null;
   documents?: CandidateDocument[];
   status_history?: CandidateStatusHistory[];
+  submissions?: any[];
+  interviews?: any[];
   submissions_count?: number;
   interviews_count?: number;
   offers_count?: number;

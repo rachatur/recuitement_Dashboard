@@ -1,5 +1,5 @@
 import random
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.orm import Session
@@ -12,7 +12,7 @@ from app.models import (
     CandidateStatusHistory, RecruiterActivity, User, SubmissionStatusEnum,
     CandidateStatusEnum, NotificationTypeEnum, RequirementStatusEnum
 )
-from app.schemas import CVSubmissionCreate, CVSubmissionStatusUpdate, CVSubmissionResponse
+from app.schemas import CVSubmissionCreate, CVSubmissionStatusUpdate, CVSubmissionResponse, BatchCVSubmissionCreate
 
 router = APIRouter(prefix="/submissions", tags=["CV Submissions Pipeline"])
 
@@ -221,6 +221,145 @@ def create_submission(
         created_at=new_sub.created_at,
         updated_at=new_sub.updated_at
     )
+
+@router.post("/batch", response_model=Dict[str, Any])
+def create_batch_submissions(
+    batch_in: BatchCVSubmissionCreate,
+    request: Request,
+    current_user: User = Depends(require_roles([RoleEnum.SUPER_ADMIN, RoleEnum.HR_RECRUITER, RoleEnum.ADMIN, RoleEnum.RECRUITER, RoleEnum.TEAM_LEAD])),
+    db: Session = Depends(get_db)
+):
+    """
+    Submits multiple selected candidates simultaneously to an active Client Job Requirement.
+    Updates candidate statuses, records date-wise timeline histories, and sends notifications.
+    """
+    requirement = db.query(JobRequirement).filter(JobRequirement.id == batch_in.requirement_id).first()
+    if not requirement:
+        raise HTTPException(status_code=404, detail="Target job requirement not found")
+    if requirement.status == RequirementStatusEnum.CLOSED:
+        raise HTTPException(status_code=400, detail="Cannot submit candidates to a closed requirement")
+
+    client = requirement.client
+    if not client:
+        raise HTTPException(status_code=404, detail="Associated client not found")
+
+    now = datetime.now(timezone.utc)
+    submitted_items = []
+    skipped_items = []
+
+    for cid in batch_in.candidate_ids:
+        cand = db.query(Candidate).filter(Candidate.id == cid).first()
+        if not cand:
+            skipped_items.append({"candidate_id": cid, "reason": "Candidate not found"})
+            continue
+
+        # Check existing active submission
+        existing = db.query(CVSubmission).filter(
+            CVSubmission.candidate_id == cand.id,
+            CVSubmission.requirement_id == requirement.id
+        ).first()
+        if existing:
+            skipped_items.append({
+                "candidate_id": str(cand.id),
+                "candidate_name": f"{cand.first_name} {cand.last_name}",
+                "reason": f"Already submitted ({existing.submission_code}) with status {existing.status.value}"
+            })
+            continue
+
+        # Find or create latest document
+        doc = db.query(CandidateDocument).filter(CandidateDocument.candidate_id == cand.id).order_by(CandidateDocument.version_number.desc()).first()
+        if not doc:
+            doc = CandidateDocument(
+                candidate_id=cand.id,
+                version_number=1,
+                document_type="Resume",
+                file_name=f"{cand.first_name}_{cand.last_name}_Resume.pdf",
+                storage_path=f"candidates/{cand.id}/resume.pdf",
+                file_url=f"/api/v1/candidates/{cand.id}/cv/download",
+                uploaded_by_id=current_user.id
+            )
+            db.add(doc)
+            db.flush()
+
+        submission_code = f"SUB-{random.randint(1000, 9999)}"
+        new_sub = CVSubmission(
+            submission_code=submission_code,
+            client_id=client.id,
+            requirement_id=requirement.id,
+            candidate_id=cand.id,
+            document_id=doc.id,
+            recruiter_id=current_user.id,
+            submission_date=now,
+            remarks=batch_in.remarks or f"Submitted to {client.name} for role '{requirement.job_title}'.",
+            status=SubmissionStatusEnum.SUBMITTED,
+            feedback_requested_at=now,
+            created_at=now,
+            updated_at=now
+        )
+        db.add(new_sub)
+        db.flush()
+
+        # Update candidate status
+        old_cand_status = str(cand.status.value if hasattr(cand.status, 'value') else cand.status)
+        cand.status = CandidateStatusEnum.SUBMITTED
+        cand.updated_at = now
+
+        # Add candidate history entry
+        db.add(CandidateStatusHistory(
+            candidate_id=cand.id,
+            submission_id=new_sub.id,
+            requirement_id=requirement.id,
+            old_status=old_cand_status,
+            new_status=CandidateStatusEnum.SUBMITTED.value,
+            changed_by_id=current_user.id,
+            remarks=f"Submitted to client '{client.name}' for requirement '{requirement.job_title}'. Remarks: {batch_in.remarks or 'N/A'}",
+            created_at=now
+        ))
+
+        # Add recruiter activity
+        db.add(RecruiterActivity(
+            recruiter_id=current_user.id,
+            activity_type="CV Submitted",
+            entity_type="CVSubmission",
+            entity_id=new_sub.id,
+            description=f"Submitted {cand.first_name} {cand.last_name} to {client.name} for '{requirement.job_title}'."
+        ))
+
+        submitted_items.append({
+            "submission_id": str(new_sub.id),
+            "submission_code": new_sub.submission_code,
+            "candidate_id": str(cand.id),
+            "candidate_name": f"{cand.first_name} {cand.last_name}",
+            "client_name": client.name,
+            "job_title": requirement.job_title
+        })
+
+    db.commit()
+
+    # Log audit event
+    log_audit_event(
+        db=db,
+        action="BATCH_CV_SUBMISSION",
+        entity="CV_SUBMISSION",
+        entity_id=requirement.id,
+        user=current_user,
+        request=request,
+        new_value={
+            "requirement": requirement.job_title,
+            "client": client.name,
+            "submitted_count": len(submitted_items),
+            "skipped_count": len(skipped_items)
+        }
+    )
+
+    return {
+        "status": "success",
+        "total_requested": len(batch_in.candidate_ids),
+        "submitted_count": len(submitted_items),
+        "skipped_count": len(skipped_items),
+        "submitted": submitted_items,
+        "skipped": skipped_items
+    }
 
 @router.put("/{submission_id}/status", response_model=CVSubmissionResponse)
 def update_submission_status(
