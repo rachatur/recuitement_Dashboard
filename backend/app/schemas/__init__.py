@@ -409,6 +409,14 @@ class BatchCVSubmissionCreate(BaseModel):
     requirement_id: str
     remarks: Optional[str] = None
 
+class BulkDeleteCandidatesRequest(BaseModel):
+    candidate_ids: List[str]
+
+class BulkDeleteCandidatesResponse(BaseModel):
+    message: str
+    deleted_count: int
+    deleted_ids: List[str]
+
 class CandidateDetailResponse(CandidateResponse):
     documents: List[CandidateDocumentResponse] = []
     status_history: List[CandidateStatusHistoryResponse] = []

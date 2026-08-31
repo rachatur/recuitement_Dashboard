@@ -22,7 +22,8 @@ from app.schemas import (
     CVExtractionResponse, BulkCVProcessItem, BulkCVUploadSummaryResponse,
     WhatsAppEligibilityInfo, WhatsAppConsentRecordRequest, WhatsAppConsentRevokeRequest,
     WhatsAppConsentResponse, WhatsAppOptOutCreateRequest, WhatsAppOptOutResponse,
-    CandidateSubmissionItem, CandidateInterviewItem
+    CandidateSubmissionItem, CandidateInterviewItem,
+    BulkDeleteCandidatesRequest, BulkDeleteCandidatesResponse
 )
 from app.services.cv_extraction_service import (
     extract_text_from_file, parse_candidate_from_text,
@@ -900,18 +901,76 @@ def delete_candidate_document(
     db.commit()
     return {"message": "Document deleted"}
 
+@router.post("/bulk-delete", response_model=BulkDeleteCandidatesResponse)
+def bulk_delete_candidates(
+    req: BulkDeleteCandidatesRequest,
+    request: Request,
+    current_user: User = Depends(require_roles([RoleEnum.SUPER_ADMIN, RoleEnum.HR_RECRUITER, RoleEnum.ADMIN, RoleEnum.RECRUITER])),
+    db: Session = Depends(get_db)
+):
+    if not req.candidate_ids:
+        raise HTTPException(status_code=400, detail="No candidate IDs provided for deletion.")
+    
+    candidates = db.query(Candidate).filter(Candidate.id.in_(req.candidate_ids)).all()
+    if not candidates:
+        return BulkDeleteCandidatesResponse(
+            message="No matching candidates found to delete.",
+            deleted_count=0,
+            deleted_ids=[]
+        )
+    
+    deleted_ids = []
+    deleted_names = []
+    for cand in candidates:
+        deleted_ids.append(str(cand.id))
+        deleted_names.append(f"{cand.first_name} {cand.last_name} ({cand.candidate_code})")
+        db.delete(cand)
+        
+    db.commit()
+
+    log_audit_event(
+        db=db,
+        action="BULK_DELETE_CANDIDATES",
+        entity="CANDIDATE",
+        entity_id=None,
+        user=current_user,
+        request=request,
+        new_value={"deleted_count": len(deleted_ids), "deleted_ids": deleted_ids, "deleted_candidates": deleted_names}
+    )
+
+    return BulkDeleteCandidatesResponse(
+        message=f"Successfully deleted {len(deleted_ids)} candidate(s).",
+        deleted_count=len(deleted_ids),
+        deleted_ids=deleted_ids
+    )
+
 @router.delete("/{cand_id}")
 def delete_candidate(
     cand_id: str,
+    request: Request,
     current_user: User = Depends(require_roles([RoleEnum.SUPER_ADMIN, RoleEnum.HR_RECRUITER, RoleEnum.ADMIN, RoleEnum.RECRUITER])),
     db: Session = Depends(get_db)
 ):
     cand = db.query(Candidate).filter(Candidate.id == cand_id).first()
     if not cand:
         raise HTTPException(status_code=404, detail="Candidate not found")
+    
+    cand_name = f"{cand.first_name} {cand.last_name}"
+    cand_code = cand.candidate_code
     db.delete(cand)
     db.commit()
-    return {"message": "Candidate deleted successfully"}
+
+    log_audit_event(
+        db=db,
+        action="DELETE_CANDIDATE",
+        entity="CANDIDATE",
+        entity_id=cand_id,
+        user=current_user,
+        request=request,
+        new_value={"candidate_name": cand_name, "candidate_code": cand_code, "candidate_id": cand_id}
+    )
+
+    return {"message": f"Candidate {cand_name} ({cand_code}) deleted successfully"}
 
 @router.post("/{cand_id}/consent", response_model=CandidateResponse)
 def record_candidate_whatsapp_consent(

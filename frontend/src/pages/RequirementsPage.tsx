@@ -255,7 +255,6 @@ export const RequirementsPage: React.FC = () => {
         >
           <option value="">All Statuses</option>
           <option value="OPEN">Open</option>
-          <option value="PARTIALLY_FILLED">Partially Filled</option>
           <option value="ON_HOLD">On Hold</option>
           <option value="CLOSED">Closed</option>
         </select>

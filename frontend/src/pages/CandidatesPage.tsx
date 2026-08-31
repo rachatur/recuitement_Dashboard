@@ -43,6 +43,12 @@ export const CandidatesPage: React.FC<CandidatesPageProps> = ({ onViewCandidateP
   const [isSubmittingBatch, setIsSubmittingBatch] = useState<boolean>(false);
   const [candidateIdsToSubmit, setCandidateIdsToSubmit] = useState<string[]>([]);
 
+  // Deletion States
+  const [candidateToDelete, setCandidateToDelete] = useState<Candidate | null>(null);
+  const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false);
+  const [isDeletingSingle, setIsDeletingSingle] = useState(false);
+  const [isDeletingBulk, setIsDeletingBulk] = useState(false);
+
   // Single CV Extraction State
   const [isExtracting, setIsExtracting] = useState(false);
   const [extractedInfo, setExtractedInfo] = useState<CVExtractionResponse | null>(null);
@@ -478,11 +484,17 @@ export const CandidatesPage: React.FC<CandidatesPageProps> = ({ onViewCandidateP
     document.body.removeChild(a);
   };
 
-  const handleDeleteCandidate = async (candidate: Candidate) => {
-    if (!window.confirm(`Delete candidate ${candidate.first_name} ${candidate.last_name}? This cannot be undone.`)) return;
+  // Single Candidate Deletion Handler
+  const handleOpenSingleDeleteModal = (cand: Candidate) => {
+    setCandidateToDelete(cand);
+  };
+
+  const handleConfirmSingleDelete = async () => {
+    if (!candidateToDelete) return;
 
     try {
-      const res = await apiFetch(`/api/v1/candidates/${candidate.id}`, {
+      setIsDeletingSingle(true);
+      const res = await apiFetch(`/api/v1/candidates/${candidateToDelete.id}`, {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -491,10 +503,50 @@ export const CandidatesPage: React.FC<CandidatesPageProps> = ({ onViewCandidateP
         alert(error.detail || 'Failed to delete candidate.');
         return;
       }
+      setSelectedCandidateIds((prev) => prev.filter((id) => id !== candidateToDelete.id));
+      setCandidateToDelete(null);
       fetchCandidates();
     } catch (err) {
       console.error('Delete candidate error:', err);
       alert('Failed to delete candidate.');
+    } finally {
+      setIsDeletingSingle(false);
+    }
+  };
+
+  // Bulk Candidate Deletion Handler
+  const handleConfirmBulkDelete = async () => {
+    if (!selectedCandidateIds.length) return;
+
+    try {
+      setIsDeletingBulk(true);
+      const res = await apiFetch('/api/v1/candidates/bulk-delete', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          candidate_ids: selectedCandidateIds
+        })
+      });
+
+      if (!res.ok) {
+        const error = await res.json();
+        alert(error.detail || 'Failed to delete selected candidates.');
+        return;
+      }
+
+      const data = await res.json();
+      setSelectedCandidateIds([]);
+      setShowBulkDeleteModal(false);
+      fetchCandidates();
+      alert(data.message || `Successfully deleted ${data.deleted_count || selectedCandidateIds.length} candidate(s).`);
+    } catch (err) {
+      console.error('Bulk delete candidates error:', err);
+      alert('Encountered an error while deleting candidates.');
+    } finally {
+      setIsDeletingBulk(false);
     }
   };
 
@@ -656,13 +708,23 @@ export const CandidatesPage: React.FC<CandidatesPageProps> = ({ onViewCandidateP
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2.5 flex-wrap">
+            {/* Submit to Client Requirement */}
             <button
               onClick={() => handleOpenSubmitModal()}
-              className="flex items-center gap-2 px-5 py-2.5 bg-brand-600 hover:bg-brand-500 text-white rounded-xl text-xs font-bold transition shadow-lg shadow-brand-500/30 hover:scale-105 active:scale-95"
+              className="flex items-center gap-2 px-4 py-2.5 bg-brand-600 hover:bg-brand-500 text-white rounded-xl text-xs font-bold transition shadow-lg shadow-brand-500/30 hover:scale-105 active:scale-95"
             >
               <Share2 className="w-4 h-4" />
-              <span>Submit to Client / Requirement</span>
+              <span>Submit to Client</span>
+            </button>
+
+            {/* Delete Selected Candidates */}
+            <button
+              onClick={() => setShowBulkDeleteModal(true)}
+              className="flex items-center gap-2 px-4 py-2.5 bg-rose-600 hover:bg-rose-500 text-white rounded-xl text-xs font-bold transition shadow-lg shadow-rose-500/30 hover:scale-105 active:scale-95"
+            >
+              <Trash2 className="w-4 h-4" />
+              <span>Delete Selected ({selectedCandidateIds.length})</span>
             </button>
 
             <button
@@ -861,7 +923,7 @@ export const CandidatesPage: React.FC<CandidatesPageProps> = ({ onViewCandidateP
 
                           {/* Delete Candidate */}
                           <button
-                            onClick={() => handleDeleteCandidate(cand)}
+                            onClick={() => handleOpenSingleDeleteModal(cand)}
                             title="Delete candidate"
                             className="flex items-center gap-1 px-2 py-1 bg-rose-950/40 hover:bg-rose-900/80 text-rose-300 hover:text-white rounded-lg border border-rose-800/60 text-xs font-semibold transition"
                           >
@@ -1573,6 +1635,155 @@ export const CandidatesPage: React.FC<CandidatesPageProps> = ({ onViewCandidateP
                 className="text-xs text-slate-400 hover:text-white"
               >
                 Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Single Candidate Deletion Confirmation */}
+      {candidateToDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm p-4 animate-in fade-in duration-150">
+          <div className="bg-slate-900 border border-rose-500/30 rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-5">
+            <div className="flex items-start gap-3.5">
+              <div className="w-11 h-11 rounded-xl bg-rose-500/10 border border-rose-500/30 flex items-center justify-center text-rose-400 shrink-0">
+                <Trash2 className="w-6 h-6" />
+              </div>
+              <div className="flex-1">
+                <h3 className="text-base font-bold text-white">
+                  Delete Candidate Profile
+                </h3>
+                <p className="text-xs text-slate-400 mt-1">
+                  Are you sure you want to delete candidate <strong className="text-white">{candidateToDelete.first_name} {candidateToDelete.last_name}</strong>?
+                </p>
+              </div>
+            </div>
+
+            {/* Candidate details preview card */}
+            <div className="bg-slate-950/80 border border-slate-800 rounded-xl p-3.5 space-y-1.5 text-xs text-slate-300">
+              <div className="flex items-center justify-between">
+                <span className="font-semibold text-white">{candidateToDelete.first_name} {candidateToDelete.last_name}</span>
+                <span className="px-2 py-0.5 bg-slate-800 text-slate-400 rounded text-[10px] font-mono">
+                  {candidateToDelete.candidate_code}
+                </span>
+              </div>
+              <p className="text-[11px] text-slate-400 truncate">
+                {candidateToDelete.email} • {candidateToDelete.whatsapp_number || candidateToDelete.phone || 'No phone'}
+              </p>
+              <p className="text-[11px] text-slate-400">
+                {candidateToDelete.current_designation || 'Software Engineer'} • {candidateToDelete.total_experience}y experience
+              </p>
+            </div>
+
+            <div className="bg-rose-500/10 border border-rose-500/20 rounded-xl p-3 text-[11px] text-rose-300 flex items-start gap-2">
+              <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5 text-rose-400" />
+              <span>This action is permanent and will remove this candidate along with their CV documents, interview evaluations, and submission records.</span>
+            </div>
+
+            <div className="flex items-center justify-end gap-3 pt-2">
+              <button
+                type="button"
+                disabled={isDeletingSingle}
+                onClick={() => setCandidateToDelete(null)}
+                className="px-4 py-2 text-xs font-semibold text-slate-400 hover:text-white disabled:opacity-50 transition"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={isDeletingSingle}
+                onClick={handleConfirmSingleDelete}
+                className="flex items-center gap-2 px-5 py-2.5 bg-rose-600 hover:bg-rose-500 disabled:opacity-50 text-white text-xs font-bold rounded-xl shadow-lg shadow-rose-500/30 transition cursor-pointer"
+              >
+                {isDeletingSingle ? (
+                  <>
+                    <RefreshCw className="w-4 h-4 animate-spin" />
+                    <span>Deleting...</span>
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="w-4 h-4" />
+                    <span>Delete Candidate</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Bulk Candidate Deletion Confirmation */}
+      {showBulkDeleteModal && selectedCandidateIds.length > 0 && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm p-4 animate-in fade-in duration-150">
+          <div className="bg-slate-900 border border-rose-500/30 rounded-2xl max-w-lg w-full p-6 shadow-2xl space-y-5">
+            <div className="flex items-start gap-3.5">
+              <div className="w-11 h-11 rounded-xl bg-rose-500/10 border border-rose-500/30 flex items-center justify-center text-rose-400 shrink-0">
+                <Trash2 className="w-6 h-6" />
+              </div>
+              <div className="flex-1">
+                <h3 className="text-base font-bold text-white">
+                  Delete {selectedCandidateIds.length} Selected Candidates
+                </h3>
+                <p className="text-xs text-slate-400 mt-1">
+                  You are about to delete <strong className="text-rose-300 font-bold">{selectedCandidateIds.length} candidate(s)</strong> at once.
+                </p>
+              </div>
+            </div>
+
+            {/* List of candidates to be deleted */}
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-slate-400">Candidates to be removed:</label>
+              <div className="bg-slate-950/80 border border-slate-800 rounded-xl p-3 max-h-40 overflow-y-auto custom-scrollbar flex flex-wrap gap-1.5">
+                {selectedCandidateIds.map((cid) => {
+                  const cand = candidates.find((c) => c.id === cid);
+                  return (
+                    <span
+                      key={cid}
+                      className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-slate-900 border border-slate-700/80 rounded-lg text-xs text-slate-200"
+                    >
+                      <span className="font-semibold text-white">
+                        {cand ? `${cand.first_name} ${cand.last_name}` : cid}
+                      </span>
+                      {cand?.candidate_code && (
+                        <span className="text-[10px] text-slate-400 font-mono">({cand.candidate_code})</span>
+                      )}
+                    </span>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="bg-rose-500/10 border border-rose-500/20 rounded-xl p-3 text-[11px] text-rose-300 flex items-start gap-2">
+              <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5 text-rose-400" />
+              <span>This operation cannot be undone. All selected candidate profiles, associated resume files, submission records, and interview histories will be permanently removed.</span>
+            </div>
+
+            <div className="flex items-center justify-end gap-3 pt-2">
+              <button
+                type="button"
+                disabled={isDeletingBulk}
+                onClick={() => setShowBulkDeleteModal(false)}
+                className="px-4 py-2 text-xs font-semibold text-slate-400 hover:text-white disabled:opacity-50 transition cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={isDeletingBulk}
+                onClick={handleConfirmBulkDelete}
+                className="flex items-center gap-2 px-5 py-2.5 bg-rose-600 hover:bg-rose-500 disabled:opacity-50 text-white text-xs font-bold rounded-xl shadow-lg shadow-rose-500/30 transition cursor-pointer"
+              >
+                {isDeletingBulk ? (
+                  <>
+                    <RefreshCw className="w-4 h-4 animate-spin" />
+                    <span>Deleting {selectedCandidateIds.length} Candidates...</span>
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="w-4 h-4" />
+                    <span>Delete {selectedCandidateIds.length} Candidate{selectedCandidateIds.length > 1 ? 's' : ''}</span>
+                  </>
+                )}
               </button>
             </div>
           </div>
