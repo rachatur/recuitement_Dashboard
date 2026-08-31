@@ -1,5 +1,4 @@
-services:
-  postgres:
+services: postgres:
     image: postgres:17-alpine
     container_name: recruitflow_postgres
     restart: always
@@ -8,7 +7,7 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-root}
       POSTGRES_DB: ${POSTGRES_DB:-recruitflow}
     ports:
-      - "5433:5432"
+      - "5450:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -22,7 +21,7 @@ services:
     container_name: recruitflow_redis
     restart: always
     ports:
-      - "6379:6379"
+      - "6390:6379"
     volumes:
       - redis_data:/data
 
@@ -35,8 +34,8 @@ services:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin123}
     ports:
-      - "9000:9000"
-      - "9001:9001"
+      - "9020:9000"
+      - "9021:9001"
     volumes:
       - minio_data:/data
 
@@ -62,7 +61,7 @@ services:
       - S3_BUCKET_NAME=recruitflow-documents
       - REDIS_URL=redis://redis:6379/0
     ports:
-      - "8000:8000"
+      - "8888:8000"
     volumes:
       - ./backend:/app
       - ./backend/uploads:/app/uploads
@@ -76,7 +75,7 @@ services:
     depends_on:
       - backend
     ports:
-      - "80:80"
+      - "7000:80"
 
 volumes:
   postgres_data:
