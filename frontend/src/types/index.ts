@@ -1161,13 +1161,22 @@ export interface WeeklyHRReportResponse {
   pipeline_funnel: WeeklyReportStageFunnel[];
   status_distribution: Record<string, number>;
   top_positions: Array<{ position: string; count: number }>;
-  top_recruiters?: Array<{ recruiter_name: string; count: number }>;
+  top_recruiters?: Array<{
+    recruiter_id: string;
+    recruiter_name: string;
+    candidates_sourced: number;
+    cvs_submitted: number;
+    interviews: number;
+    selected: number;
+    joined: number;
+  }>;
   recent_submissions?: Array<{
     id: string;
     submission_code: string;
     candidate_name: string;
     client_name: string;
     position: string;
+    recruiter_name?: string;
     status: string;
     date: string;
   }>;

@@ -387,15 +387,92 @@ def get_weekly_hr_report(
         pos_counts[pos] = pos_counts.get(pos, 0) + 1
     top_positions = [{"position": k, "count": v} for k, v in sorted(pos_counts.items(), key=lambda x: x[1], reverse=True)[:6]]
 
+    # Recruiter-wise weekly performance breakdown
+    recruiter_stats: Dict[str, Dict[str, Any]] = {}
+    
+    # Sourced candidates by recruiter
+    for cand in cand_q.all():
+        rec_name = "Unassigned"
+        rec_id_str = str(cand.recruiter_id) if cand.recruiter_id else "unassigned"
+        if cand.recruiter:
+            rec_name = cand.recruiter.full_name or cand.recruiter.email
+        elif cand.recruiter_id:
+            r_user = db.query(User).filter(User.id == cand.recruiter_id).first()
+            if r_user:
+                rec_name = r_user.full_name or r_user.email
+        
+        if rec_id_str not in recruiter_stats:
+            recruiter_stats[rec_id_str] = {
+                "recruiter_id": rec_id_str,
+                "recruiter_name": rec_name,
+                "candidates_sourced": 0,
+                "cvs_submitted": 0,
+                "interviews": 0,
+                "selected": 0,
+                "joined": 0
+            }
+        recruiter_stats[rec_id_str]["candidates_sourced"] += 1
+
+    # Submissions by recruiter
+    for sub in sub_q.all():
+        rec_name = "Unassigned"
+        rec_id_str = str(sub.recruiter_id) if sub.recruiter_id else "unassigned"
+        if sub.recruiter:
+            rec_name = sub.recruiter.full_name or sub.recruiter.email
+        elif sub.recruiter_id:
+            r_user = db.query(User).filter(User.id == sub.recruiter_id).first()
+            if r_user:
+                rec_name = r_user.full_name or r_user.email
+        
+        if rec_id_str not in recruiter_stats:
+            recruiter_stats[rec_id_str] = {
+                "recruiter_id": rec_id_str,
+                "recruiter_name": rec_name,
+                "candidates_sourced": 0,
+                "cvs_submitted": 0,
+                "interviews": 0,
+                "selected": 0,
+                "joined": 0
+            }
+        recruiter_stats[rec_id_str]["cvs_submitted"] += 1
+        if sub.status in [SubmissionStatusEnum.SELECTED, SubmissionStatusEnum.OFFER, SubmissionStatusEnum.JOINED, SubmissionStatusEnum.SHORTLISTED]:
+            recruiter_stats[rec_id_str]["selected"] += 1
+
+    # Ensure all HR recruiters are included
+    all_recruiters = db.query(User).filter(User.role.in_([RoleEnum.SUPER_ADMIN, RoleEnum.ADMIN, RoleEnum.HR_RECRUITER, RoleEnum.RECRUITER, RoleEnum.TEAM_LEAD])).all()
+    for r in all_recruiters:
+        r_id = str(r.id)
+        if r_id not in recruiter_stats:
+            recruiter_stats[r_id] = {
+                "recruiter_id": r_id,
+                "recruiter_name": r.full_name or r.email,
+                "candidates_sourced": 0,
+                "cvs_submitted": 0,
+                "interviews": 0,
+                "selected": 0,
+                "joined": 0
+            }
+
+    top_recruiters = sorted(list(recruiter_stats.values()), key=lambda x: (x["cvs_submitted"] + x["candidates_sourced"]), reverse=True)
+
     # Recent submissions in the week
     recent_submissions = []
-    for sub in sub_q.order_by(CVSubmission.created_at.desc()).limit(10).all():
+    for sub in sub_q.order_by(CVSubmission.created_at.desc()).limit(15).all():
+        rec_name = "Unassigned"
+        if sub.recruiter:
+            rec_name = sub.recruiter.full_name or sub.recruiter.email
+        elif sub.recruiter_id:
+            r_user = db.query(User).filter(User.id == sub.recruiter_id).first()
+            if r_user:
+                rec_name = r_user.full_name or r_user.email
+
         recent_submissions.append({
             "id": str(sub.id),
             "submission_code": sub.submission_code,
             "candidate_name": f"{sub.candidate.first_name} {sub.candidate.last_name}" if sub.candidate else "Candidate",
             "client_name": sub.client.name if sub.client else "Client",
             "position": sub.requirement.job_title if sub.requirement else "Role",
+            "recruiter_name": rec_name,
             "status": str(sub.status.value if hasattr(sub.status, 'value') else sub.status),
             "date": sub.created_at.strftime("%Y-%m-%d %H:%M") if sub.created_at else ""
         })
@@ -417,5 +494,6 @@ def get_weekly_hr_report(
         pipeline_funnel=pipeline_funnel,
         status_distribution=status_distribution,
         top_positions=top_positions,
+        top_recruiters=top_recruiters,
         recent_submissions=recent_submissions
     )

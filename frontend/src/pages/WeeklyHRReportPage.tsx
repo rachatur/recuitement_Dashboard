@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { apiFetch } from '../api/client';
 import { useAuth } from '../contexts/AuthContext';
-import { WeeklyHRReportResponse } from '../types';
+import { WeeklyHRReportResponse, User } from '../types';
 import {
   Calendar, FileText, Download, Printer, RefreshCw, Filter,
   Users, Send, CheckCircle2, XCircle, Clock, CalendarDays,
   Award, UserCheck, PauseCircle, TrendingUp, BarChart3,
   Layers, ChevronLeft, ChevronRight, Briefcase, Building,
-  ArrowUpRight, PieChart, Sparkles, Check
+  ArrowUpRight, PieChart, Sparkles, Check, UserPlus, Shield
 } from 'lucide-react';
 
 interface WeeklyHRReportPageProps {
@@ -17,14 +17,30 @@ interface WeeklyHRReportPageProps {
 export const WeeklyHRReportPage: React.FC<WeeklyHRReportPageProps> = ({
   onViewCandidateProfile
 }) => {
-  const { token } = useAuth();
+  const { token, user } = useAuth();
   const [report, setReport] = useState<WeeklyHRReportResponse | null>(null);
+  const [recruiters, setRecruiters] = useState<User[]>([]);
+  const [selectedRecruiterId, setSelectedRecruiterId] = useState<string>('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [weekOffset, setWeekOffset] = useState<number>(0);
   const [useCustomRange, setUseCustomRange] = useState(false);
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
+
+  const fetchRecruiters = async () => {
+    try {
+      const res = await apiFetch('/api/v1/users/recruiters', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setRecruiters(data);
+      }
+    } catch (e) {
+      console.error('Failed to fetch recruiters list', e);
+    }
+  };
 
   const fetchWeeklyReport = async () => {
     try {
@@ -36,6 +52,9 @@ export const WeeklyHRReportPage: React.FC<WeeklyHRReportPageProps> = ({
         params.append('end_date', endDate);
       } else {
         params.append('week_offset', weekOffset.toString());
+      }
+      if (selectedRecruiterId) {
+        params.append('recruiter_id', selectedRecruiterId);
       }
 
       const res = await apiFetch(`/api/v1/analytics/weekly-hr-report?${params.toString()}`, {
@@ -61,8 +80,12 @@ export const WeeklyHRReportPage: React.FC<WeeklyHRReportPageProps> = ({
   };
 
   useEffect(() => {
+    fetchRecruiters();
+  }, []);
+
+  useEffect(() => {
     fetchWeeklyReport();
-  }, [weekOffset, useCustomRange]);
+  }, [weekOffset, useCustomRange, selectedRecruiterId]);
 
   const handleApplyCustomDate = (e: React.FormEvent) => {
     e.preventDefault();
@@ -93,7 +116,7 @@ export const WeeklyHRReportPage: React.FC<WeeklyHRReportPageProps> = ({
                 </span>
               </h1>
               <p className="text-xs text-slate-400">
-                Track weekly sourcing, submissions, interviews, selection rates, and onboarding velocity.
+                Track weekly sourcing, submissions, interviews, selection rates, and HR recruiter activity updates.
               </p>
             </div>
           </div>
@@ -120,8 +143,8 @@ export const WeeklyHRReportPage: React.FC<WeeklyHRReportPageProps> = ({
         </div>
       </div>
 
-      {/* Week Selector Toolbar */}
-      <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-4 shadow-lg print:hidden">
+      {/* Week & HR Filter Toolbar */}
+      <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-4 shadow-lg print:hidden space-y-3">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
           {/* Quick Week Select Buttons */}
           <div className="flex flex-wrap items-center gap-2">
@@ -191,32 +214,49 @@ export const WeeklyHRReportPage: React.FC<WeeklyHRReportPageProps> = ({
             </div>
           </div>
 
-          {/* Custom Date Range Picker */}
-          <form onSubmit={handleApplyCustomDate} className="flex flex-wrap items-center gap-2.5">
-            <div className="flex items-center gap-1.5 text-xs text-slate-400 font-medium">
-              <Calendar className="w-3.5 h-3.5 text-blue-400" />
-              <span>Custom Date:</span>
+          {/* HR Recruiter Selector & Custom Date */}
+          <div className="flex flex-wrap items-center gap-3">
+            {/* HR / Recruiter Filter */}
+            <div className="flex items-center gap-1.5 bg-slate-950 border border-slate-800 px-3 py-1.5 rounded-xl text-xs">
+              <Users className="w-3.5 h-3.5 text-indigo-400" />
+              <span className="text-slate-400 font-medium">HR:</span>
+              <select
+                value={selectedRecruiterId}
+                onChange={(e) => setSelectedRecruiterId(e.target.value)}
+                className="bg-transparent text-slate-200 focus:outline-none font-semibold text-xs cursor-pointer"
+              >
+                <option value="" className="bg-slate-900 text-slate-200">All HRs & Recruiters</option>
+                {recruiters.map((r) => (
+                  <option key={r.id} value={r.id} className="bg-slate-900 text-slate-200">
+                    {r.full_name || r.email} ({r.role?.replace('_', ' ')})
+                  </option>
+                ))}
+              </select>
             </div>
-            <input
-              type="date"
-              value={startDate}
-              onChange={(e) => setStartDate(e.target.value)}
-              className="px-3 py-1.5 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-200 focus:outline-none focus:border-blue-500"
-            />
-            <span className="text-slate-500 text-xs font-semibold">to</span>
-            <input
-              type="date"
-              value={endDate}
-              onChange={(e) => setEndDate(e.target.value)}
-              className="px-3 py-1.5 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-200 focus:outline-none focus:border-blue-500"
-            />
-            <button
-              type="submit"
-              className="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold shadow transition"
-            >
-              Apply
-            </button>
-          </form>
+
+            {/* Custom Date Range Picker */}
+            <form onSubmit={handleApplyCustomDate} className="flex flex-wrap items-center gap-2">
+              <input
+                type="date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                className="px-2.5 py-1.5 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-200 focus:outline-none focus:border-blue-500"
+              />
+              <span className="text-slate-500 text-xs font-semibold">to</span>
+              <input
+                type="date"
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+                className="px-2.5 py-1.5 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-200 focus:outline-none focus:border-blue-500"
+              />
+              <button
+                type="submit"
+                className="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold shadow transition"
+              >
+                Apply
+              </button>
+            </form>
+          </div>
         </div>
       </div>
 
@@ -395,6 +435,86 @@ export const WeeklyHRReportPage: React.FC<WeeklyHRReportPageProps> = ({
         </div>
       </div>
 
+      {/* HR Recruiter Weekly Performance & Activity Breakdown Section */}
+      <div className="bg-slate-900/90 p-5 rounded-2xl border border-slate-800 shadow-lg space-y-4">
+        <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-lg bg-indigo-500/20 border border-indigo-500/30 flex items-center justify-center text-indigo-400">
+              <Users className="w-4 h-4" />
+            </div>
+            <div>
+              <h3 className="font-bold text-sm text-white">
+                HR Recruiter Weekly Updates & Sourcing Breakdown
+              </h3>
+              <p className="text-xs text-slate-400">
+                Performance throughput and weekly candidate updates by each HR team member.
+              </p>
+            </div>
+          </div>
+          <span className="text-xs text-slate-400">
+            {report?.top_recruiters?.length || 0} HR Recruiters Tracked
+          </span>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 pt-1">
+          {report?.top_recruiters && report.top_recruiters.length > 0 ? (
+            report.top_recruiters.map((rec, idx) => {
+              const isCurrentFilter = selectedRecruiterId === rec.recruiter_id;
+              return (
+                <div
+                  key={idx}
+                  onClick={() => setSelectedRecruiterId(isCurrentFilter ? '' : rec.recruiter_id)}
+                  className={`cursor-pointer bg-slate-950 p-4 rounded-xl border transition-all ${
+                    isCurrentFilter
+                      ? 'border-indigo-500 bg-indigo-950/20 shadow-lg shadow-indigo-500/10 ring-1 ring-indigo-500/40'
+                      : 'border-slate-800 hover:border-slate-700'
+                  }`}
+                >
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-indigo-600 to-blue-600 flex items-center justify-center text-white font-bold text-xs">
+                        {rec.recruiter_name.charAt(0).toUpperCase()}
+                      </div>
+                      <div>
+                        <h4 className="font-bold text-xs text-white truncate max-w-[140px]">
+                          {rec.recruiter_name}
+                        </h4>
+                        <span className="text-[10px] text-indigo-400 block font-medium">
+                          HR Recruiter
+                        </span>
+                      </div>
+                    </div>
+
+                    <span className="px-2 py-0.5 bg-slate-800 text-slate-300 text-[10px] font-bold rounded border border-slate-700">
+                      Rank #{idx + 1}
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-2 text-center pt-2 border-t border-slate-800/80">
+                    <div className="bg-slate-900/80 p-2 rounded-lg border border-slate-800/60">
+                      <span className="text-[10px] text-slate-400 block">Sourced</span>
+                      <span className="text-sm font-black text-blue-400">{rec.candidates_sourced}</span>
+                    </div>
+                    <div className="bg-slate-900/80 p-2 rounded-lg border border-slate-800/60">
+                      <span className="text-[10px] text-slate-400 block">Submitted</span>
+                      <span className="text-sm font-black text-indigo-400">{rec.cvs_submitted}</span>
+                    </div>
+                    <div className="bg-slate-900/80 p-2 rounded-lg border border-slate-800/60">
+                      <span className="text-[10px] text-slate-400 block">Selected</span>
+                      <span className="text-sm font-black text-emerald-400">{rec.selected}</span>
+                    </div>
+                  </div>
+                </div>
+              );
+            })
+          ) : (
+            <div className="col-span-3 text-center py-6 text-slate-500 text-xs">
+              No recruiter activity recorded in this date range.
+            </div>
+          )}
+        </div>
+      </div>
+
       {/* Visual Charts & Funnel Section */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Day-by-Day Activity Chart */}
@@ -535,7 +655,7 @@ export const WeeklyHRReportPage: React.FC<WeeklyHRReportPageProps> = ({
         </div>
       </div>
 
-      {/* Top Positions & Recent Submissions Section */}
+      {/* Top Positions & Submissions Log with HR Recruiter Tracking */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Top Demanded Job Titles */}
         <div className="bg-slate-900/90 p-5 rounded-2xl border border-slate-800 shadow-lg">
@@ -574,7 +694,7 @@ export const WeeklyHRReportPage: React.FC<WeeklyHRReportPageProps> = ({
           <div className="flex items-center justify-between pb-3 border-b border-slate-800">
             <h3 className="font-bold text-sm text-white flex items-center gap-2">
               <Building className="w-4 h-4 text-indigo-400" />
-              Weekly Client Submissions & Outreaches
+              Weekly Client Submissions & HR Activity Log
             </h3>
             <span className="text-xs text-slate-400">
               Showing latest {report?.recent_submissions?.length || 0} submissions
@@ -589,6 +709,7 @@ export const WeeklyHRReportPage: React.FC<WeeklyHRReportPageProps> = ({
                   <th className="py-2.5 px-3">Candidate</th>
                   <th className="py-2.5 px-3">Position</th>
                   <th className="py-2.5 px-3">Client</th>
+                  <th className="py-2.5 px-3">Submitted By (HR)</th>
                   <th className="py-2.5 px-3">Status</th>
                   <th className="py-2.5 px-3 rounded-r-lg text-right">Date</th>
                 </tr>
@@ -610,6 +731,12 @@ export const WeeklyHRReportPage: React.FC<WeeklyHRReportPageProps> = ({
                         {sub.client_name}
                       </td>
                       <td className="py-3 px-3">
+                        <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-indigo-500/10 text-indigo-300 border border-indigo-500/20 text-[11px] font-semibold">
+                          <Users className="w-3 h-3 text-indigo-400" />
+                          {sub.recruiter_name || 'HR Recruiter'}
+                        </span>
+                      </td>
+                      <td className="py-3 px-3">
                         <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase border ${
                           sub.status === 'SELECTED' || sub.status === 'JOINED' || sub.status === 'OFFER'
                             ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
@@ -629,7 +756,7 @@ export const WeeklyHRReportPage: React.FC<WeeklyHRReportPageProps> = ({
                   ))
                 ) : (
                   <tr>
-                    <td colSpan={6} className="py-8 text-center text-slate-500 text-xs">
+                    <td colSpan={7} className="py-8 text-center text-slate-500 text-xs">
                       No submissions logged in this period.
                     </td>
                   </tr>
