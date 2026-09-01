@@ -665,62 +665,7 @@ export const CandidatesPage: React.FC<CandidatesPageProps> = ({ onViewCandidateP
         </div>
       </div>
 
-      {/* 3. Position-Wise Candidate View Summary Cards */}
-      <div className="bg-slate-900/90 p-4 rounded-2xl border border-slate-800/80 shadow-lg space-y-3">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-800/60 pb-2.5">
-          <div className="flex items-center gap-2">
-            <Briefcase className="w-4 h-4 text-cyan-400" />
-            <h2 className="text-xs font-bold uppercase tracking-wider text-slate-200">
-              Position-Wise Talent Breakdown ({positionsSummary?.total_candidates || candidates.length} Candidates)
-            </h2>
-          </div>
-          <span className="text-[11px] text-slate-400">
-            Select a position card below to filter candidates instantly
-          </span>
-        </div>
-
-        <div className="flex items-center gap-2.5 overflow-x-auto pb-1.5 scrollbar-thin">
-          {/* All Positions Card */}
-          <button
-            onClick={() => setSelectedPosition('all')}
-            className={`px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 shrink-0 ${
-              selectedPosition === 'all'
-                ? 'bg-cyan-600 text-white shadow-lg shadow-cyan-600/30 ring-1 ring-cyan-400'
-                : 'bg-slate-950/80 text-slate-300 border border-slate-800 hover:border-slate-700 hover:bg-slate-900'
-            }`}
-          >
-            <Users className="w-3.5 h-3.5 text-cyan-300" />
-            <span>All Positions</span>
-            <span className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold ${selectedPosition === 'all' ? 'bg-white/20 text-white' : 'bg-slate-800 text-cyan-300 border border-cyan-500/20'}`}>
-              {positionsSummary?.total_candidates || candidates.length}
-            </span>
-          </button>
-
-          {/* Dynamically Extracted Positions */}
-          {(positionsSummary?.positions || []).map((posGroup) => {
-            const isSelected = selectedPosition.toLowerCase() === posGroup.position.toLowerCase();
-            return (
-              <button
-                key={posGroup.position}
-                onClick={() => setSelectedPosition(isSelected ? 'all' : posGroup.position)}
-                className={`px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 shrink-0 ${
-                  isSelected
-                    ? 'bg-gradient-to-r from-cyan-600 to-indigo-600 text-white shadow-lg shadow-indigo-600/30 ring-1 ring-cyan-400'
-                    : 'bg-slate-950/80 text-slate-300 border border-slate-800 hover:border-cyan-500/50 hover:bg-slate-900'
-                }`}
-              >
-                <Briefcase className="w-3.5 h-3.5 text-cyan-400" />
-                <span className="truncate max-w-[200px]">{posGroup.position}</span>
-                <span className={`px-2 py-0.5 rounded-full text-[10px] font-black ${isSelected ? 'bg-white/20 text-white' : 'bg-slate-800 text-cyan-300 border border-cyan-500/30'}`}>
-                  {posGroup.count}
-                </span>
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* 4. Advanced Search & Multi-Filter Toolbar */}
+      {/* Advanced Search & Multi-Filter Toolbar */}
       <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-4 space-y-3.5 shadow-md">
         <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-3">
           {/* Main Search Bar */}
