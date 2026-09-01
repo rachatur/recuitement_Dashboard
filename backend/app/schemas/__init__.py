@@ -240,6 +240,11 @@ class CandidateDocumentResponse(BaseModel):
     class Config:
         from_attributes = True
 
+class CandidateStatusUpdateRequest(BaseModel):
+    status: str
+    remarks: Optional[str] = None
+    requirement_id: Optional[str] = None
+
 class CandidateStatusHistoryResponse(BaseModel):
     id: str
     candidate_id: str
@@ -252,6 +257,63 @@ class CandidateStatusHistoryResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+class CandidateStatusSummaryCounts(BaseModel):
+    selected: int = 0
+    rejected: int = 0
+    on_hold: int = 0
+    in_interview: int = 0
+    pending: int = 0
+    other: int = 0
+    total_candidates: int = 0
+    total_transitions: int = 0
+    by_status: Dict[str, int] = {}
+
+class CandidateStatusHistoryFeedItem(BaseModel):
+    id: str
+    candidate_id: str
+    candidate_code: str
+    candidate_name: str
+    candidate_email: str
+    candidate_phone: Optional[str] = None
+    candidate_current_company: Optional[str] = None
+    candidate_current_designation: Optional[str] = None
+    old_status: Optional[str] = None
+    new_status: str
+    stage_duration_hours: float = 0.0
+    stage_duration_display: str = ""
+    changed_by_id: Optional[str] = None
+    changed_by_name: Optional[str] = None
+    requirement_id: Optional[str] = None
+    requirement_title: Optional[str] = None
+    client_name: Optional[str] = None
+    remarks: Optional[str] = None
+    created_at: datetime
+    created_at_formatted: str = ""
+
+class CandidateHistoryLifecycleItem(BaseModel):
+    candidate_id: str
+    candidate_code: str
+    candidate_name: str
+    candidate_email: str
+    candidate_phone: Optional[str] = None
+    candidate_current_company: Optional[str] = None
+    candidate_current_designation: Optional[str] = None
+    current_status: str
+    status_category: str  # "SELECTED", "REJECTED", "ON_HOLD", "IN_INTERVIEW", "PENDING", "OTHER"
+    transitions_count: int = 0
+    total_pipeline_days: float = 0.0
+    initial_date: datetime
+    latest_date: datetime
+    latest_remarks: Optional[str] = None
+    latest_changed_by: Optional[str] = None
+    history_events: List[CandidateStatusHistoryFeedItem] = []
+
+class CandidateHistoryPageResponse(BaseModel):
+    summary: CandidateStatusSummaryCounts
+    feed: List[CandidateStatusHistoryFeedItem]
+    candidates: List[CandidateHistoryLifecycleItem]
+    total_events: int
 
 class WhatsAppEligibilityInfo(BaseModel):
     is_eligible: bool

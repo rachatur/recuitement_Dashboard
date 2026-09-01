@@ -1042,3 +1042,64 @@ export interface AIAssistantCategory {
   prompts: string[];
 }
 
+export interface CandidateStatusSummaryCounts {
+  selected: number;
+  rejected: number;
+  on_hold: number;
+  in_interview: number;
+  pending: number;
+  other: number;
+  total_candidates: number;
+  total_transitions: number;
+  by_status: Record<string, number>;
+}
+
+export interface CandidateStatusHistoryFeedItem {
+  id: string;
+  candidate_id: string;
+  candidate_code: string;
+  candidate_name: string;
+  candidate_email: string;
+  candidate_phone?: string | null;
+  candidate_current_company?: string | null;
+  candidate_current_designation?: string | null;
+  old_status?: string | null;
+  new_status: string;
+  stage_duration_hours: number;
+  stage_duration_display: string;
+  changed_by_id?: string | null;
+  changed_by_name?: string | null;
+  requirement_id?: string | null;
+  requirement_title?: string | null;
+  client_name?: string | null;
+  remarks?: string | null;
+  created_at: string;
+  created_at_formatted: string;
+}
+
+export interface CandidateHistoryLifecycleItem {
+  candidate_id: string;
+  candidate_code: string;
+  candidate_name: string;
+  candidate_email: string;
+  candidate_phone?: string | null;
+  candidate_current_company?: string | null;
+  candidate_current_designation?: string | null;
+  current_status: string;
+  status_category: 'SELECTED' | 'REJECTED' | 'ON_HOLD' | 'IN_INTERVIEW' | 'PENDING' | 'OTHER' | string;
+  transitions_count: number;
+  total_pipeline_days: number;
+  initial_date: string;
+  latest_date: string;
+  latest_remarks?: string | null;
+  latest_changed_by?: string | null;
+  history_events: CandidateStatusHistoryFeedItem[];
+}
+
+export interface CandidateHistoryPageResponse {
+  summary: CandidateStatusSummaryCounts;
+  feed: CandidateStatusHistoryFeedItem[];
+  candidates: CandidateHistoryLifecycleItem[];
+  total_events: number;
+}
+

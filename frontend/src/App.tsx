@@ -9,6 +9,7 @@ import { RequirementsPage } from './pages/RequirementsPage';
 import { PositionTrackingPage } from './pages/PositionTrackingPage';
 import { CandidatesPage } from './pages/CandidatesPage';
 import { CandidateProfilePage } from './pages/CandidateProfilePage';
+import { CandidateHistoryPage } from './pages/CandidateHistoryPage';
 import { BenchPage } from './pages/BenchPage';
 import { WhatsAppDashboardPage } from './pages/WhatsAppDashboardPage';
 import { WhatsAppCampaignsPage } from './pages/WhatsAppCampaignsPage';
@@ -95,6 +96,12 @@ const AppContent: React.FC = () => {
           />
         ) : (
           <CandidatesPage onViewCandidateProfile={handleViewCandidateProfile} />
+        );
+      case 'candidate-history':
+        return (
+          <CandidateHistoryPage
+            onViewCandidateProfile={handleViewCandidateProfile}
+          />
         );
       case 'bench':
         return (

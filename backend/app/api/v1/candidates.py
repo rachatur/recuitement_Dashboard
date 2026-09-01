@@ -1,8 +1,8 @@
 import os
 import re
 import uuid
-from typing import List, Optional, Tuple
-from datetime import datetime, timezone
+from typing import List, Optional, Tuple, Dict
+from datetime import datetime, timezone, timedelta
 from fastapi import APIRouter, Depends, HTTPException, status, Request, UploadFile, File, Form, Query
 from fastapi.responses import FileResponse, Response
 from sqlalchemy import Text, cast
@@ -14,7 +14,8 @@ from app.core.storage import storage_service
 from app.models import (
     Candidate, CandidateSkill, CandidateDocument, CandidateStatusHistory,
     CVSubmission, User, CandidateStatusEnum, RecruiterActivity, AuditLog,
-    BenchStatusEnum, WhatsAppConsentStatusEnum, WhatsAppOptOut, BenchResource
+    BenchStatusEnum, WhatsAppConsentStatusEnum, WhatsAppOptOut, BenchResource,
+    JobRequirement, Client
 )
 from app.schemas import (
     CandidateCreate, CandidateUpdate, CandidateResponse, CandidateDetailResponse,
@@ -24,7 +25,9 @@ from app.schemas import (
     WhatsAppConsentResponse, WhatsAppOptOutCreateRequest, WhatsAppOptOutResponse,
     CandidateSubmissionItem, CandidateInterviewItem,
     BulkDeleteCandidatesRequest, BulkDeleteCandidatesResponse,
-    EmploymentHistoryItem, EmploymentGapItem
+    EmploymentHistoryItem, EmploymentGapItem,
+    CandidateStatusSummaryCounts, CandidateStatusHistoryFeedItem,
+    CandidateHistoryLifecycleItem, CandidateHistoryPageResponse
 )
 from app.services.cv_extraction_service import (
     extract_text_from_file, parse_candidate_from_text,
@@ -554,6 +557,230 @@ def get_candidates(
 
         results.append(resp)
     return results
+
+def get_candidate_status_category(st: Optional[str]) -> str:
+    if not st:
+        return "OTHER"
+    st = str(st).upper()
+    if st in ["SELECTED", "OFFER", "JOINED", "OFFERED", "HIRED"]:
+        return "SELECTED"
+    if st in ["REJECTED", "DECLINED", "DROPPED"]:
+        return "REJECTED"
+    if st in ["ON_HOLD", "HOLD", "PAUSED"]:
+        return "ON_HOLD"
+    if st in ["INTERVIEW", "INTERVIEW_SCHEDULED", "INTERVIEW_ROUND_1", "INTERVIEW_ROUND_2", "INTERVIEW_ROUND_3"]:
+        return "IN_INTERVIEW"
+    if st in ["RECEIVED", "SCREENED", "SHORTLISTED", "SUBMITTED", "IN_REVIEW", "PENDING"]:
+        return "PENDING"
+    return "OTHER"
+
+def format_duration_display(hours: Optional[float]) -> str:
+    if not hours or hours <= 0:
+        return "< 1 hr"
+    if hours < 24:
+        return f"{int(hours)} hrs" if hours >= 1 else f"{int(hours * 60)} mins"
+    days = round(hours / 24.0, 1)
+    if days == int(days):
+        return f"{int(days)} day" if int(days) == 1 else f"{int(days)} days"
+    return f"{days} days"
+
+@router.get("/history-feed", response_model=CandidateHistoryPageResponse)
+@router.get("/status-history-analytics", response_model=CandidateHistoryPageResponse)
+def get_candidate_status_history_analytics(
+    search: Optional[str] = None,
+    status_category: Optional[str] = None,
+    status_filter: Optional[str] = Query(None, alias="status"),
+    date_range: Optional[str] = None,
+    changed_by_id: Optional[str] = None,
+    current_user: User = Depends(require_roles([RoleEnum.SUPER_ADMIN, RoleEnum.HR_RECRUITER, RoleEnum.ADMIN, RoleEnum.RECRUITER, RoleEnum.TEAM_LEAD, RoleEnum.CLIENT, RoleEnum.HIRING_MANAGER, RoleEnum.VIEWER])),
+    db: Session = Depends(get_db)
+):
+    """
+    Returns candidate status history summary counts (Selected, Rejected, On Hold, In Interview, Pending, Other)
+    and complete chronological status transition events feed across candidates.
+    """
+    all_candidates = db.query(Candidate).all()
+    
+    # 1. Compute summary counts across entire candidate talent pool
+    selected_count = 0
+    rejected_count = 0
+    on_hold_count = 0
+    in_interview_count = 0
+    pending_count = 0
+    other_count = 0
+    by_status: Dict[str, int] = {}
+
+    for cand in all_candidates:
+        c_st = (cand.status or "RECEIVED").upper()
+        by_status[c_st] = by_status.get(c_st, 0) + 1
+        cat = get_candidate_status_category(c_st)
+        if cat == "SELECTED":
+            selected_count += 1
+        elif cat == "REJECTED":
+            rejected_count += 1
+        elif cat == "ON_HOLD":
+            on_hold_count += 1
+        elif cat == "IN_INTERVIEW":
+            in_interview_count += 1
+        elif cat == "PENDING":
+            pending_count += 1
+        else:
+            other_count += 1
+
+    total_transitions = db.query(CandidateStatusHistory).count()
+
+    summary = CandidateStatusSummaryCounts(
+        selected=selected_count,
+        rejected=rejected_count,
+        on_hold=on_hold_count,
+        in_interview=in_interview_count,
+        pending=pending_count,
+        other=other_count,
+        total_candidates=len(all_candidates),
+        total_transitions=total_transitions,
+        by_status=by_status
+    )
+
+    # 2. Build Feed Query
+    query = db.query(CandidateStatusHistory).join(Candidate, CandidateStatusHistory.candidate_id == Candidate.id)
+
+    if search:
+        s_clean = search.strip()
+        query = query.filter(
+            Candidate.first_name.ilike(f"%{s_clean}%") |
+            Candidate.last_name.ilike(f"%{s_clean}%") |
+            Candidate.email.ilike(f"%{s_clean}%") |
+            Candidate.candidate_code.ilike(f"%{s_clean}%") |
+            Candidate.current_company.ilike(f"%{s_clean}%") |
+            CandidateStatusHistory.remarks.ilike(f"%{s_clean}%") |
+            CandidateStatusHistory.old_status.ilike(f"%{s_clean}%") |
+            CandidateStatusHistory.new_status.ilike(f"%{s_clean}%")
+        )
+
+    if status_filter and status_filter != "all":
+        query = query.filter(CandidateStatusHistory.new_status == status_filter)
+
+    if changed_by_id and changed_by_id != "all":
+        query = query.filter(CandidateStatusHistory.changed_by_id == changed_by_id)
+
+    if date_range and date_range != "all":
+        now = datetime.now(timezone.utc)
+        if date_range == "today":
+            start_date = now.replace(hour=0, minute=0, second=0, microsecond=0)
+            query = query.filter(CandidateStatusHistory.created_at >= start_date)
+        elif date_range == "week":
+            start_date = now - timedelta(days=7)
+            query = query.filter(CandidateStatusHistory.created_at >= start_date)
+        elif date_range == "month":
+            start_date = now - timedelta(days=30)
+            query = query.filter(CandidateStatusHistory.created_at >= start_date)
+        elif date_range == "quarter":
+            start_date = now - timedelta(days=90)
+            query = query.filter(CandidateStatusHistory.created_at >= start_date)
+
+    hist_records = query.order_by(CandidateStatusHistory.created_at.desc()).limit(300).all()
+
+    feed_items: List[CandidateStatusHistoryFeedItem] = []
+    
+    for h in hist_records:
+        cand = h.candidate
+        if not cand:
+            continue
+
+        c_name = f"{cand.first_name} {cand.last_name}".strip()
+        changer_name = h.changed_by.full_name if h.changed_by else "System Automated"
+        
+        req_title = None
+        cli_name = None
+        if h.requirement_id:
+            req = db.query(JobRequirement).filter(JobRequirement.id == h.requirement_id).first()
+            if req:
+                req_title = req.job_title
+                if req.client:
+                    cli_name = req.client.name
+
+        cat = get_candidate_status_category(h.new_status)
+        if status_category and status_category != "all" and cat != status_category.upper():
+            continue
+
+        feed_items.append(
+            CandidateStatusHistoryFeedItem(
+                id=str(h.id),
+                candidate_id=str(h.candidate_id),
+                candidate_code=cand.candidate_code or "CAN-0000",
+                candidate_name=c_name,
+                candidate_email=cand.email or "",
+                candidate_phone=cand.whatsapp_number or cand.phone,
+                candidate_current_company=cand.current_company,
+                candidate_current_designation=cand.current_designation,
+                old_status=h.old_status,
+                new_status=h.new_status,
+                stage_duration_hours=round(float(h.stage_duration_hours or 0.0), 1),
+                stage_duration_display=format_duration_display(h.stage_duration_hours),
+                changed_by_id=str(h.changed_by_id) if h.changed_by_id else None,
+                changed_by_name=changer_name,
+                requirement_id=str(h.requirement_id) if h.requirement_id else None,
+                requirement_title=req_title,
+                client_name=cli_name,
+                remarks=h.remarks,
+                created_at=h.created_at,
+                created_at_formatted=h.created_at.strftime("%b %d, %Y %I:%M %p") if h.created_at else ""
+            )
+        )
+
+    # 3. Construct Candidate Lifecycle grouped records
+    candidate_map: Dict[str, List[CandidateStatusHistoryFeedItem]] = {}
+    for item in feed_items:
+        candidate_map.setdefault(item.candidate_id, []).append(item)
+
+    candidate_lifecycles: List[CandidateHistoryLifecycleItem] = []
+    for cand_id, events in candidate_map.items():
+        cand = db.query(Candidate).filter(Candidate.id == cand_id).first()
+        if not cand:
+            continue
+        sorted_events = sorted(events, key=lambda x: x.created_at, reverse=True)
+        latest_ev = sorted_events[0]
+        oldest_ev = sorted_events[-1]
+        
+        pipeline_days = 0.0
+        if cand.created_at and latest_ev.created_at:
+            c_dt = cand.created_at if cand.created_at.tzinfo else cand.created_at.replace(tzinfo=timezone.utc)
+            l_dt = latest_ev.created_at if latest_ev.created_at.tzinfo else latest_ev.created_at.replace(tzinfo=timezone.utc)
+            delta = l_dt - c_dt
+            pipeline_days = round(max(0.1, delta.total_seconds() / 86400.0), 1)
+
+        c_status = cand.status or latest_ev.new_status
+        cat = get_candidate_status_category(c_status)
+        if status_category and status_category != "all" and cat != status_category.upper():
+            continue
+
+        candidate_lifecycles.append(
+            CandidateHistoryLifecycleItem(
+                candidate_id=str(cand.id),
+                candidate_code=cand.candidate_code or "CAN-0000",
+                candidate_name=f"{cand.first_name} {cand.last_name}".strip(),
+                candidate_email=cand.email or "",
+                candidate_phone=cand.whatsapp_number or cand.phone,
+                candidate_current_company=cand.current_company,
+                candidate_current_designation=cand.current_designation,
+                current_status=c_status,
+                status_category=cat,
+                transitions_count=len(events),
+                total_pipeline_days=pipeline_days,
+                initial_date=cand.created_at or oldest_ev.created_at,
+                latest_date=latest_ev.created_at,
+                latest_remarks=latest_ev.remarks,
+                latest_changed_by=latest_ev.changed_by_name,
+                history_events=sorted_events
+            )
+        )
+
+    return CandidateHistoryPageResponse(
+        summary=summary,
+        feed=feed_items,
+        candidates=candidate_lifecycles,
+        total_events=len(feed_items)
+    )
 
 @router.post("/extract-cv", response_model=CVExtractionResponse)
 async def extract_cv_details(
@@ -1193,6 +1420,69 @@ def update_candidate(
         )
         db.add(hist)
 
+    db.commit()
+    db.refresh(cand)
+
+    return build_candidate_response_obj(cand, db)
+
+@router.put("/{cand_id}/status", response_model=CandidateResponse)
+@router.patch("/{cand_id}/status", response_model=CandidateResponse)
+def update_candidate_status(
+    cand_id: str,
+    status_in: CandidateStatusUpdateRequest,
+    current_user: User = Depends(require_roles([RoleEnum.SUPER_ADMIN, RoleEnum.HR_RECRUITER, RoleEnum.ADMIN, RoleEnum.RECRUITER, RoleEnum.TEAM_LEAD])),
+    db: Session = Depends(get_db)
+):
+    """
+    Explicitly updates a candidate's pipeline status, records stage duration and remarks in CandidateStatusHistory.
+    """
+    cand = db.query(Candidate).filter(Candidate.id == cand_id).first()
+    if not cand:
+        raise HTTPException(status_code=404, detail="Candidate not found")
+
+    old_st = str(cand.status.value if hasattr(cand.status, 'value') else cand.status)
+    new_st = str(status_in.status.value if hasattr(status_in.status, 'value') else status_in.status).upper()
+
+    # Calculate stage duration in hours from previous history record
+    last_hist = db.query(CandidateStatusHistory).filter(
+        CandidateStatusHistory.candidate_id == cand.id
+    ).order_by(CandidateStatusHistory.created_at.desc()).first()
+
+    duration_hours = 0.0
+    now = datetime.now(timezone.utc)
+    if last_hist and last_hist.created_at:
+        l_dt = last_hist.created_at if last_hist.created_at.tzinfo else last_hist.created_at.replace(tzinfo=timezone.utc)
+        delta = now - l_dt
+        duration_hours = round(max(0.1, delta.total_seconds() / 3600.0), 1)
+
+    cand.status = new_st
+    cand.updated_at = now
+
+    hist = CandidateStatusHistory(
+        candidate_id=cand.id,
+        requirement_id=status_in.requirement_id,
+        old_status=old_st,
+        new_status=new_st,
+        stage_duration_hours=duration_hours,
+        changed_by_id=current_user.id,
+        remarks=status_in.remarks or f"Status changed from {old_st} to {new_st}"
+    )
+    db.add(hist)
+
+    # Log audit
+    audit = AuditLog(
+        user_id=current_user.id,
+        user_email=current_user.email,
+        user_name=current_user.full_name,
+        user_role=str(current_user.role.value if hasattr(current_user.role, 'value') else current_user.role),
+        action="CANDIDATE_STATUS_CHANGED",
+        entity="CANDIDATE",
+        entity_id=cand.id,
+        old_value={"status": old_st},
+        new_value={"status": new_st, "remarks": status_in.remarks},
+        remarks=f"Candidate {cand.first_name} {cand.last_name} status updated from {old_st} to {new_st}."
+    )
+    db.add(audit)
     db.commit()
     db.refresh(cand)
 

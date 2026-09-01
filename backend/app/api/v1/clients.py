@@ -115,8 +115,11 @@ def create_client(
     current_user: User = Depends(require_roles([RoleEnum.SUPER_ADMIN, RoleEnum.ADMIN, RoleEnum.RECRUITER])),
     db: Session = Depends(get_db)
 ):
-    code_num = random.randint(100, 999)
-    client_code = f"CLI-{code_num}"
+    while True:
+        code_num = random.randint(1000, 99999)
+        client_code = f"CLI-{code_num}"
+        if not db.query(Client).filter(Client.client_code == client_code).first():
+            break
     
     new_client = Client(
         client_code=client_code,

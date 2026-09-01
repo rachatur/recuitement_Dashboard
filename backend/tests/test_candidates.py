@@ -235,4 +235,53 @@ def test_employment_history_and_job_stability_analysis():
     )
     assert filter_resp.status_code == 200
 
+def test_candidate_status_history_feed_analytics():
+    token = get_token()
+    ts = int(time.time() * 1000)
+
+    # Create candidate
+    cand_resp = client.post(
+        "/api/v1/candidates",
+        json={
+            "first_name": "History",
+            "last_name": f"Tracker {ts}",
+            "email": f"history.tracker.{ts}@example.com",
+            "total_experience": 3.0,
+            "status": "RECEIVED"
+        },
+        headers={"Authorization": f"Bearer {token}"}
+    )
+    assert cand_resp.status_code == 200
+    candidate = cand_resp.json()
+
+    # Update candidate status to INTERVIEW
+    upd_resp = client.put(
+        f"/api/v1/candidates/{candidate['id']}/status",
+        json={"status": "INTERVIEW", "remarks": "Shortlisted and scheduled for interview round 1"},
+        headers={"Authorization": f"Bearer {token}"}
+    )
+    assert upd_resp.status_code == 200
+
+    # Call history-feed analytics endpoint
+    feed_resp = client.get(
+        "/api/v1/candidates/history-feed",
+        headers={"Authorization": f"Bearer {token}"}
+    )
+    assert feed_resp.status_code == 200
+    feed_data = feed_resp.json()
+
+    assert "summary" in feed_data
+    assert "feed" in feed_data
+    assert "candidates" in feed_data
+    assert feed_data["summary"]["total_candidates"] >= 1
+    assert feed_data["summary"]["in_interview"] >= 1
+
+    # Check that our candidate's status change event appears in the feed
+    matching_events = [e for e in feed_data["feed"] if e["candidate_id"] == candidate["id"]]
+    assert len(matching_events) >= 1
+    latest_ev = matching_events[0]
+    assert latest_ev["new_status"] == "INTERVIEW"
+    assert "interview round 1" in latest_ev["remarks"]
+
+
 
