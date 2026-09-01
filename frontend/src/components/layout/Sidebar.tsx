@@ -19,8 +19,12 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab }) => 
   const role = user?.role;
   const [waExpanded, setWaExpanded] = useState(true);
 
-  const isRoleAllowed = (allowedRoles: string[]) =>
-    !role || role === 'SUPER_ADMIN' || role === 'HR_RECRUITER' || allowedRoles.includes(role);
+  const isRoleAllowed = (allowedRoles: string[]) => {
+    if (!role) return true;
+    const r = role.toString().toUpperCase();
+    if (r === 'SUPER_ADMIN' || r === 'HR_RECRUITER' || r === 'ADMIN' || r === 'RECRUITER') return true;
+    return allowedRoles.some((ar) => ar.toUpperCase() === r);
+  };
 
   const isWhatsAppActive = activeTab.startsWith('whatsapp-');
 
@@ -361,25 +365,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab }) => 
                 <span className="text-[9px] font-extrabold px-1.5 py-0.2 bg-gradient-to-r from-brand-500/30 to-indigo-500/30 text-brand-300 border border-brand-400/40 rounded-full flex items-center gap-1">
                   <Sparkles className="w-2.5 h-2.5" />
                   Copilot
-                </span>
-              </button>
-            )}
-
-            {isRoleAllowed(['SUPER_ADMIN', 'ADMIN', 'TEAM_LEAD', 'RECRUITER', 'VIEWER']) && (
-              <button
-                onClick={() => setActiveTab('weekly-hr-report')}
-                className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-semibold transition-all ${
-                  activeTab === 'weekly-hr-report'
-                    ? 'bg-blue-600/20 text-blue-300 border border-blue-500/30 shadow-sm'
-                    : 'text-slate-400 hover:text-blue-300 hover:bg-slate-900/60'
-                }`}
-              >
-                <div className="flex items-center gap-3 truncate">
-                  <BarChart3 className="w-4 h-4 text-blue-400 shrink-0" />
-                  <span className="truncate">Weekly HR Report</span>
-                </div>
-                <span className="text-[9px] font-bold px-1.5 py-0.5 bg-blue-500/20 text-blue-400 border border-blue-500/30 rounded-full">
-                  Report
                 </span>
               </button>
             )}
