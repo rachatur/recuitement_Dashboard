@@ -144,7 +144,12 @@ const AppContent: React.FC = () => {
       case 'interviews':
         return <InterviewsPage />;
       case 'offers':
-        return <OffersPage />;
+        return (
+          <OffersPage
+            onNavigateToCampaigns={handleNavigateToCampaigns}
+            onViewCandidateProfile={handleViewCandidateProfile}
+          />
+        );
       case 'analytics':
         return <AnalyticsPage />;
       case 'weekly-hr-report':

@@ -90,7 +90,7 @@ def get_offers(
 def create_offer(
     offer_in: OfferCreate,
     request: Request,
-    current_user: User = Depends(require_roles([RoleEnum.SUPER_ADMIN, RoleEnum.ADMIN, RoleEnum.RECRUITER, RoleEnum.TEAM_LEAD])),
+    current_user: User = Depends(require_roles([RoleEnum.SUPER_ADMIN, RoleEnum.ADMIN, RoleEnum.HR_RECRUITER, RoleEnum.RECRUITER, RoleEnum.TEAM_LEAD])),
     db: Session = Depends(get_db)
 ):
     candidate = db.query(Candidate).filter(Candidate.id == offer_in.candidate_id).first()
@@ -230,7 +230,7 @@ def record_joining(
     offer_id: str,
     joining_in: JoiningDetailCreate,
     request: Request,
-    current_user: User = Depends(require_roles([RoleEnum.SUPER_ADMIN, RoleEnum.ADMIN, RoleEnum.RECRUITER, RoleEnum.TEAM_LEAD])),
+    current_user: User = Depends(require_roles([RoleEnum.SUPER_ADMIN, RoleEnum.ADMIN, RoleEnum.HR_RECRUITER, RoleEnum.RECRUITER, RoleEnum.TEAM_LEAD])),
     db: Session = Depends(get_db)
 ):
     offer = db.query(Offer).filter(Offer.id == offer_id).first()
