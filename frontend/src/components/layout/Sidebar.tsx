@@ -53,84 +53,64 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab }) => 
             </p>
           </div>
           <div className="space-y-0.5">
-            {/* 01. Dashboard */}
+            {/* Dashboard */}
             {isRoleAllowed(['SUPER_ADMIN', 'ADMIN', 'RECRUITER', 'TEAM_LEAD', 'CLIENT', 'HIRING_MANAGER', 'VIEWER']) && (
               <button
                 onClick={() => setActiveTab('dashboard')}
-                className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-semibold transition-all group ${
+                className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-semibold transition-all ${
                   activeTab === 'dashboard'
                     ? 'bg-brand-600/20 text-brand-300 border border-brand-500/30 shadow-sm'
                     : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/60'
                 }`}
               >
-                <span className={`text-[10px] font-mono font-bold shrink-0 ${
-                  activeTab === 'dashboard' ? 'text-brand-400' : 'text-slate-400 group-hover:text-slate-400'
-                }`}>
-                  01.
-                </span>
                 <LayoutDashboard className="w-4 h-4 shrink-0" />
-                <span className="truncate">Dashboard</span>
+                <span>Dashboard</span>
               </button>
             )}
 
-            {/* 02. Clients */}
+            {/* Clients */}
             {isRoleAllowed(['SUPER_ADMIN', 'ADMIN', 'RECRUITER', 'TEAM_LEAD', 'CLIENT', 'HIRING_MANAGER', 'VIEWER']) && (
               <button
                 onClick={() => setActiveTab('clients')}
-                className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-semibold transition-all group ${
+                className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-semibold transition-all ${
                   activeTab === 'clients'
                     ? 'bg-brand-600/20 text-brand-300 border border-brand-500/30 shadow-sm'
                     : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/60'
                 }`}
               >
-                <span className={`text-[10px] font-mono font-bold shrink-0 ${
-                  activeTab === 'clients' ? 'text-brand-400' : 'text-slate-400 group-hover:text-slate-400'
-                }`}>
-                  02.
-                </span>
                 <Building2 className="w-4 h-4 shrink-0" />
-                <span className="truncate">Clients</span>
+                <span>Clients</span>
               </button>
             )}
 
-            {/* 03. Job Requirements */}
+            {/* Job Requirements */}
             {isRoleAllowed(['SUPER_ADMIN', 'ADMIN', 'RECRUITER', 'TEAM_LEAD', 'CLIENT', 'HIRING_MANAGER', 'VIEWER']) && (
               <button
                 onClick={() => setActiveTab('requirements')}
-                className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-semibold transition-all group ${
+                className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-semibold transition-all ${
                   activeTab === 'requirements'
                     ? 'bg-brand-600/20 text-brand-300 border border-brand-500/30 shadow-sm'
                     : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/60'
                 }`}
               >
-                <div className="flex items-center gap-2.5 truncate">
-                  <span className={`text-[10px] font-mono font-bold shrink-0 ${
-                    activeTab === 'requirements' ? 'text-brand-400' : 'text-slate-400 group-hover:text-slate-400'
-                  }`}>
-                    03.
-                  </span>
+                <div className="flex items-center gap-3 truncate">
                   <Briefcase className="w-4 h-4 shrink-0" />
                   <span className="truncate">Job Requirements</span>
                 </div>
               </button>
             )}
 
-            {/* 04. Position Tracking */}
+            {/* Position Tracking */}
             {isRoleAllowed(['SUPER_ADMIN', 'ADMIN', 'RECRUITER', 'TEAM_LEAD', 'CLIENT', 'HIRING_MANAGER', 'VIEWER']) && (
               <button
                 onClick={() => setActiveTab('position-tracking')}
-                className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-semibold transition-all group ${
+                className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-semibold transition-all ${
                   activeTab === 'position-tracking'
                     ? 'bg-brand-600/20 text-brand-300 border border-brand-500/30 shadow-sm'
                     : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/60'
                 }`}
               >
-                <div className="flex items-center gap-2.5 truncate">
-                  <span className={`text-[10px] font-mono font-bold shrink-0 ${
-                    activeTab === 'position-tracking' ? 'text-brand-400' : 'text-slate-400 group-hover:text-slate-400'
-                  }`}>
-                    04.
-                  </span>
+                <div className="flex items-center gap-3 truncate">
                   <Layers className="w-4 h-4 shrink-0" />
                   <span className="truncate">Position Tracking</span>
                 </div>
@@ -140,44 +120,34 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab }) => 
               </button>
             )}
 
-            {/* 05. Candidates & CVs */}
+            {/* Candidates & CVs */}
             {isRoleAllowed(['SUPER_ADMIN', 'ADMIN', 'RECRUITER', 'TEAM_LEAD', 'CLIENT', 'HIRING_MANAGER', 'VIEWER']) && (
               <button
                 onClick={() => setActiveTab('candidates')}
-                className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-semibold transition-all group ${
+                className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-semibold transition-all ${
                   activeTab === 'candidates'
                     ? 'bg-brand-600/20 text-brand-300 border border-brand-500/30 shadow-sm'
                     : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/60'
                 }`}
               >
-                <div className="flex items-center gap-2.5 truncate">
-                  <span className={`text-[10px] font-mono font-bold shrink-0 ${
-                    activeTab === 'candidates' ? 'text-brand-400' : 'text-slate-400 group-hover:text-slate-400'
-                  }`}>
-                    05.
-                  </span>
+                <div className="flex items-center gap-3 truncate">
                   <Users className="w-4 h-4 shrink-0" />
                   <span className="truncate">Candidates & CVs</span>
                 </div>
               </button>
             )}
 
-            {/* 06. Candidate History */}
+            {/* Candidate History */}
             {isRoleAllowed(['SUPER_ADMIN', 'ADMIN', 'RECRUITER', 'TEAM_LEAD', 'CLIENT', 'HIRING_MANAGER', 'VIEWER']) && (
               <button
                 onClick={() => setActiveTab('candidate-history')}
-                className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-semibold transition-all group ${
+                className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-semibold transition-all ${
                   activeTab === 'candidate-history'
                     ? 'bg-cyan-600/20 text-cyan-300 border border-cyan-500/40 shadow-sm'
                     : 'text-slate-400 hover:text-cyan-300 hover:bg-slate-900/60'
                 }`}
               >
-                <div className="flex items-center gap-2.5 truncate">
-                  <span className={`text-[10px] font-mono font-bold shrink-0 ${
-                    activeTab === 'candidate-history' ? 'text-cyan-400' : 'text-slate-400 group-hover:text-cyan-400'
-                  }`}>
-                    06.
-                  </span>
+                <div className="flex items-center gap-3 truncate">
                   <History className="w-4 h-4 shrink-0 text-cyan-400" />
                   <span className="truncate">Candidate History</span>
                 </div>
@@ -187,22 +157,17 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab }) => 
               </button>
             )}
 
-            {/* 07. Bench Resource Pool */}
+            {/* Bench Resource Pool */}
             {isRoleAllowed(['SUPER_ADMIN', 'ADMIN', 'RECRUITER', 'TEAM_LEAD', 'CLIENT', 'HIRING_MANAGER', 'VIEWER']) && (
               <button
                 onClick={() => setActiveTab('bench')}
-                className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-semibold transition-all group ${
+                className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-semibold transition-all ${
                   activeTab === 'bench'
                     ? 'bg-emerald-600/20 text-emerald-300 border border-emerald-500/30 shadow-sm'
                     : 'text-slate-400 hover:text-emerald-300 hover:bg-slate-900/60'
                 }`}
               >
-                <div className="flex items-center gap-2.5 truncate">
-                  <span className={`text-[10px] font-mono font-bold shrink-0 ${
-                    activeTab === 'bench' ? 'text-emerald-400' : 'text-slate-400 group-hover:text-emerald-400'
-                  }`}>
-                    07.
-                  </span>
+                <div className="flex items-center gap-3 truncate">
                   <Award className="w-4 h-4 text-emerald-400 shrink-0" />
                   <span className="truncate font-bold text-emerald-300">Bench Resource Pool</span>
                 </div>
@@ -212,63 +177,48 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab }) => 
               </button>
             )}
 
-            {/* 08. CV Submissions */}
+            {/* CV Submissions */}
             {isRoleAllowed(['SUPER_ADMIN', 'ADMIN', 'RECRUITER', 'TEAM_LEAD', 'CLIENT', 'HIRING_MANAGER', 'VIEWER']) && (
               <button
                 onClick={() => setActiveTab('submissions')}
-                className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-semibold transition-all group ${
+                className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-semibold transition-all ${
                   activeTab === 'submissions'
                     ? 'bg-brand-600/20 text-brand-300 border border-brand-500/30 shadow-sm'
                     : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/60'
                 }`}
               >
-                <span className={`text-[10px] font-mono font-bold shrink-0 ${
-                  activeTab === 'submissions' ? 'text-brand-400' : 'text-slate-400 group-hover:text-slate-400'
-                }`}>
-                  08.
-                </span>
                 <Send className="w-4 h-4 shrink-0" />
-                <span className="truncate">CV Submissions</span>
+                <span>CV Submissions</span>
               </button>
             )}
 
-            {/* 09. Interviews & Feedback */}
+            {/* Interviews & Feedback */}
             {isRoleAllowed(['SUPER_ADMIN', 'ADMIN', 'RECRUITER', 'TEAM_LEAD', 'CLIENT', 'HIRING_MANAGER', 'VIEWER']) && (
               <button
                 onClick={() => setActiveTab('interviews')}
-                className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-semibold transition-all group ${
+                className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-semibold transition-all ${
                   activeTab === 'interviews'
                     ? 'bg-brand-600/20 text-brand-300 border border-brand-500/30 shadow-sm'
                     : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/60'
                 }`}
               >
-                <span className={`text-[10px] font-mono font-bold shrink-0 ${
-                  activeTab === 'interviews' ? 'text-brand-400' : 'text-slate-400 group-hover:text-slate-400'
-                }`}>
-                  09.
-                </span>
                 <CalendarCheck2 className="w-4 h-4 shrink-0" />
-                <span className="truncate">Interviews & Feedback</span>
+                <span>Interviews & Feedback</span>
               </button>
             )}
 
-            {/* 10. Offers & Joining */}
+            {/* Offers & Joining */}
             {isRoleAllowed(['SUPER_ADMIN', 'ADMIN', 'RECRUITER', 'TEAM_LEAD', 'VIEWER']) && (
               <button
                 onClick={() => setActiveTab('offers')}
-                className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-semibold transition-all group ${
+                className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-semibold transition-all ${
                   activeTab === 'offers'
                     ? 'bg-brand-600/20 text-brand-300 border border-brand-500/30 shadow-sm'
                     : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/60'
                 }`}
               >
-                <span className={`text-[10px] font-mono font-bold shrink-0 ${
-                  activeTab === 'offers' ? 'text-brand-400' : 'text-slate-400 group-hover:text-slate-400'
-                }`}>
-                  10.
-                </span>
                 <FileCheck2 className="w-4 h-4 shrink-0" />
-                <span className="truncate">Offers & Joining</span>
+                <span>Offers & Joining</span>
               </button>
             )}
           </div>
@@ -294,118 +244,88 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab }) => 
 
             {waExpanded && (
               <div className="space-y-0.5 pl-2 border-l border-emerald-500/20 ml-3">
-                {/* 11. Outreach Dashboard */}
+                {/* Outreach Dashboard */}
                 <button
                   onClick={() => setActiveTab('whatsapp-dashboard')}
-                  className={`w-full flex items-center gap-2.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all group ${
+                  className={`w-full flex items-center gap-2.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
                     activeTab === 'whatsapp-dashboard'
                       ? 'bg-emerald-600/20 text-emerald-300 border border-emerald-500/30'
                       : 'text-slate-400 hover:text-emerald-300 hover:bg-slate-900/50'
                   }`}
                 >
-                  <span className={`text-[10px] font-mono font-bold shrink-0 ${
-                    activeTab === 'whatsapp-dashboard' ? 'text-emerald-400' : 'text-slate-400 group-hover:text-emerald-400'
-                  }`}>
-                    11.
-                  </span>
                   <LayoutDashboard className="w-3.5 h-3.5 shrink-0" />
-                  <span className="truncate">Outreach Dashboard</span>
+                  <span>Outreach Dashboard</span>
                 </button>
 
-                {/* 12. Campaigns */}
+                {/* Campaigns */}
                 <button
                   onClick={() => setActiveTab('whatsapp-campaigns')}
-                  className={`w-full flex items-center justify-between px-3 py-1.5 rounded-lg text-xs font-medium transition-all group ${
+                  className={`w-full flex items-center justify-between px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
                     activeTab === 'whatsapp-campaigns'
                       ? 'bg-emerald-600/20 text-emerald-300 border border-emerald-500/30'
                       : 'text-slate-400 hover:text-emerald-300 hover:bg-slate-900/50'
                   }`}
                 >
                   <div className="flex items-center gap-2.5 truncate">
-                    <span className={`text-[10px] font-mono font-bold shrink-0 ${
-                      activeTab === 'whatsapp-campaigns' ? 'text-emerald-400' : 'text-slate-400 group-hover:text-emerald-400'
-                    }`}>
-                      12.
-                    </span>
                     <Radio className="w-3.5 h-3.5 shrink-0" />
-                    <span className="truncate">Campaigns</span>
+                    <span>Campaigns</span>
                   </div>
                 </button>
 
-                {/* 13. Message Templates */}
+                {/* Message Templates */}
                 <button
                   onClick={() => setActiveTab('whatsapp-templates')}
-                  className={`w-full flex items-center gap-2.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all group ${
+                  className={`w-full flex items-center gap-2.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
                     activeTab === 'whatsapp-templates'
                       ? 'bg-emerald-600/20 text-emerald-300 border border-emerald-500/30'
                       : 'text-slate-400 hover:text-emerald-300 hover:bg-slate-900/50'
                   }`}
                 >
-                  <span className={`text-[10px] font-mono font-bold shrink-0 ${
-                    activeTab === 'whatsapp-templates' ? 'text-emerald-400' : 'text-slate-400 group-hover:text-emerald-400'
-                  }`}>
-                    13.
-                  </span>
                   <FileText className="w-3.5 h-3.5 shrink-0" />
-                  <span className="truncate">Message Templates</span>
+                  <span>Message Templates</span>
                 </button>
 
-                {/* 14. Conversations */}
+                {/* Conversations */}
                 <button
                   onClick={() => setActiveTab('whatsapp-conversations')}
-                  className={`w-full flex items-center justify-between px-3 py-1.5 rounded-lg text-xs font-medium transition-all group ${
+                  className={`w-full flex items-center justify-between px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
                     activeTab === 'whatsapp-conversations'
                       ? 'bg-emerald-600/20 text-emerald-300 border border-emerald-500/30'
                       : 'text-slate-400 hover:text-emerald-300 hover:bg-slate-900/50'
                   }`}
                 >
                   <div className="flex items-center gap-2.5 truncate">
-                    <span className={`text-[10px] font-mono font-bold shrink-0 ${
-                      activeTab === 'whatsapp-conversations' ? 'text-emerald-400' : 'text-slate-400 group-hover:text-emerald-400'
-                    }`}>
-                      14.
-                    </span>
                     <MessagesSquare className="w-3.5 h-3.5 shrink-0" />
-                    <span className="truncate">Conversations</span>
+                    <span>Conversations</span>
                   </div>
                   <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
                 </button>
 
-                {/* 15. Opt-Out Suppression */}
+                {/* Opt-Out Suppression */}
                 <button
                   onClick={() => setActiveTab('whatsapp-opt-outs')}
-                  className={`w-full flex items-center gap-2.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all group ${
+                  className={`w-full flex items-center gap-2.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
                     activeTab === 'whatsapp-opt-outs'
                       ? 'bg-emerald-600/20 text-emerald-300 border border-emerald-500/30'
                       : 'text-slate-400 hover:text-emerald-300 hover:bg-slate-900/50'
                   }`}
                 >
-                  <span className={`text-[10px] font-mono font-bold shrink-0 ${
-                    activeTab === 'whatsapp-opt-outs' ? 'text-emerald-400' : 'text-slate-400 group-hover:text-emerald-400'
-                  }`}>
-                    15.
-                  </span>
                   <Ban className="w-3.5 h-3.5 shrink-0" />
-                  <span className="truncate">Opt-Out Suppression</span>
+                  <span>Opt-Out Suppression</span>
                 </button>
 
-                {/* 16. Integration Settings */}
+                {/* Integration Settings */}
                 {isRoleAllowed(['SUPER_ADMIN', 'ADMIN']) && (
                   <button
                     onClick={() => setActiveTab('whatsapp-settings')}
-                    className={`w-full flex items-center gap-2.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all group ${
+                    className={`w-full flex items-center gap-2.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
                       activeTab === 'whatsapp-settings'
                         ? 'bg-emerald-600/20 text-emerald-300 border border-emerald-500/30'
                         : 'text-slate-400 hover:text-emerald-300 hover:bg-slate-900/50'
                     }`}
                   >
-                    <span className={`text-[10px] font-mono font-bold shrink-0 ${
-                      activeTab === 'whatsapp-settings' ? 'text-emerald-400' : 'text-slate-400 group-hover:text-emerald-400'
-                    }`}>
-                      16.
-                    </span>
                     <Settings className="w-3.5 h-3.5 shrink-0" />
-                    <span className="truncate">Integration Settings</span>
+                    <span>Integration Settings</span>
                   </button>
                 )}
               </div>
@@ -421,22 +341,17 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab }) => 
             </p>
           </div>
           <div className="space-y-0.5">
-            {/* 17. Weekly HR Report */}
+            {/* Weekly HR Report */}
             {isRoleAllowed(['SUPER_ADMIN', 'ADMIN', 'RECRUITER', 'TEAM_LEAD', 'CLIENT', 'HIRING_MANAGER', 'VIEWER']) && (
               <button
                 onClick={() => setActiveTab('weekly-hr-report')}
-                className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-semibold transition-all group ${
+                className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-semibold transition-all ${
                   activeTab === 'weekly-hr-report'
                     ? 'bg-blue-600/20 text-blue-300 border border-blue-500/30 shadow-sm'
                     : 'text-slate-400 hover:text-blue-300 hover:bg-slate-900/60'
                 }`}
               >
-                <div className="flex items-center gap-2.5 truncate">
-                  <span className={`text-[10px] font-mono font-bold shrink-0 ${
-                    activeTab === 'weekly-hr-report' ? 'text-blue-400' : 'text-slate-400 group-hover:text-blue-400'
-                  }`}>
-                    17.
-                  </span>
+                <div className="flex items-center gap-3 truncate">
                   <BarChart3 className="w-4 h-4 text-blue-400 shrink-0" />
                   <span className="truncate font-bold text-blue-300">Weekly HR Report</span>
                 </div>
@@ -446,67 +361,52 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab }) => 
               </button>
             )}
 
-            {/* 18. Recruitment Analytics */}
+            {/* AI Resume & Matcher */}
+            {isRoleAllowed(['SUPER_ADMIN', 'ADMIN', 'RECRUITER', 'TEAM_LEAD']) && (
+              <button
+                onClick={() => setActiveTab('ai-tools')}
+                className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-semibold transition-all ${
+                  activeTab === 'ai-tools'
+                    ? 'bg-emerald-600/20 text-emerald-300 border border-emerald-500/30 shadow-sm'
+                    : 'text-slate-400 hover:text-emerald-300 hover:bg-slate-900/60'
+                }`}
+              >
+                <div className="flex items-center gap-3 truncate">
+                  <Sparkles className="w-4 h-4 text-emerald-400 shrink-0" />
+                  <span className="truncate font-semibold text-emerald-300">AI Resume & Matcher</span>
+                </div>
+                <span className="text-[9px] font-extrabold px-1.5 py-0.2 bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded">
+                  AI Match
+                </span>
+              </button>
+            )}
+
+            {/* Recruitment Analytics */}
             {isRoleAllowed(['SUPER_ADMIN', 'ADMIN', 'TEAM_LEAD', 'RECRUITER', 'VIEWER']) && (
               <button
                 onClick={() => setActiveTab('analytics')}
-                className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-semibold transition-all group ${
+                className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-semibold transition-all ${
                   activeTab === 'analytics'
                     ? 'bg-brand-600/20 text-brand-300 border border-brand-500/30 shadow-sm'
                     : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/60'
                 }`}
               >
-                <span className={`text-[10px] font-mono font-bold shrink-0 ${
-                  activeTab === 'analytics' ? 'text-brand-400' : 'text-slate-400 group-hover:text-slate-400'
-                }`}>
-                  18.
-                </span>
                 <TrendingUp className="w-4 h-4 shrink-0" />
-                <span className="truncate">Recruitment Analytics</span>
+                <span>Recruitment Analytics</span>
               </button>
             )}
 
-            {/* 19. Activity / Audit Log */}
-            {isRoleAllowed(['SUPER_ADMIN', 'ADMIN', 'TEAM_LEAD', 'RECRUITER']) && (
-              <button
-                onClick={() => setActiveTab('audit-logs')}
-                className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-semibold transition-all group ${
-                  activeTab === 'audit-logs'
-                    ? 'bg-brand-600/20 text-brand-300 border border-brand-500/30 shadow-sm'
-                    : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/60'
-                }`}
-              >
-                <div className="flex items-center gap-2.5 truncate">
-                  <span className={`text-[10px] font-mono font-bold shrink-0 ${
-                    activeTab === 'audit-logs' ? 'text-brand-400' : 'text-slate-400 group-hover:text-slate-400'
-                  }`}>
-                    19.
-                  </span>
-                  <ShieldAlert className="w-4 h-4 shrink-0" />
-                  <span className="truncate">Activity / Audit Log</span>
-                </div>
-                <span className="text-[9px] font-bold px-1.5 py-0.2 bg-slate-800 text-slate-300 border border-slate-700 rounded">
-                  Audit
-                </span>
-              </button>
-            )}
-
-            {/* AI Assistant */}
+            {/* AI Assistant & Copilot */}
             {isRoleAllowed(['SUPER_ADMIN', 'ADMIN', 'RECRUITER', 'TEAM_LEAD', 'VIEWER']) && (
               <button
                 onClick={() => setActiveTab('ai-assistant')}
-                className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-semibold transition-all group ${
+                className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-semibold transition-all ${
                   activeTab === 'ai-assistant'
                     ? 'bg-gradient-to-r from-brand-600/30 to-indigo-600/30 text-brand-200 border border-brand-500/40 shadow-md shadow-brand-900/20'
                     : 'text-slate-300 hover:text-white hover:bg-slate-900/80'
                 }`}
               >
-                <div className="flex items-center gap-2.5 truncate">
-                  <span className={`text-[10px] font-mono font-bold shrink-0 ${
-                    activeTab === 'ai-assistant' ? 'text-brand-300' : 'text-slate-400 group-hover:text-slate-300'
-                  }`}>
-                    20.
-                  </span>
+                <div className="flex items-center gap-3 truncate">
                   <Bot className="w-4 h-4 text-brand-400 shrink-0" />
                   <span className="font-bold">AI Assistant</span>
                 </div>
@@ -517,23 +417,38 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab }) => 
               </button>
             )}
 
+            {/* Activity / Audit Log */}
+            {isRoleAllowed(['SUPER_ADMIN', 'ADMIN', 'TEAM_LEAD', 'RECRUITER']) && (
+              <button
+                onClick={() => setActiveTab('audit-logs')}
+                className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-semibold transition-all ${
+                  activeTab === 'audit-logs'
+                    ? 'bg-brand-600/20 text-brand-300 border border-brand-500/30 shadow-sm'
+                    : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/60'
+                }`}
+              >
+                <div className="flex items-center gap-3 truncate">
+                  <ShieldAlert className="w-4 h-4 shrink-0" />
+                  <span className="truncate">Activity / Audit Log</span>
+                </div>
+                <span className="text-[9px] font-bold px-1.5 py-0.2 bg-slate-800 text-slate-300 border border-slate-700 rounded">
+                  Audit
+                </span>
+              </button>
+            )}
+
             {/* User Management */}
             {isRoleAllowed(['SUPER_ADMIN', 'ADMIN']) && (
               <button
                 onClick={() => setActiveTab('users')}
-                className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-semibold transition-all group ${
+                className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-semibold transition-all ${
                   activeTab === 'users'
                     ? 'bg-brand-600/20 text-brand-300 border border-brand-500/30 shadow-sm'
                     : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/60'
                 }`}
               >
-                <span className={`text-[10px] font-mono font-bold shrink-0 ${
-                  activeTab === 'users' ? 'text-brand-400' : 'text-slate-400 group-hover:text-slate-400'
-                }`}>
-                  21.
-                </span>
                 <UserCheck className="w-4 h-4 shrink-0" />
-                <span className="truncate">User Management</span>
+                <span>User Management</span>
               </button>
             )}
           </div>
