@@ -22,6 +22,7 @@ import { SubmissionsPage } from './pages/SubmissionsPage';
 import { InterviewsPage } from './pages/InterviewsPage';
 import { OffersPage } from './pages/OffersPage';
 import { AnalyticsPage } from './pages/AnalyticsPage';
+import { WeeklyHRReportPage } from './pages/WeeklyHRReportPage';
 import { AuditLogsPage } from './pages/AuditLogsPage';
 import { UsersPage } from './pages/UsersPage';
 import { AIToolsPage } from './pages/AIToolsPage';
@@ -146,6 +147,8 @@ const AppContent: React.FC = () => {
         return <OffersPage />;
       case 'analytics':
         return <AnalyticsPage />;
+      case 'weekly-hr-report':
+        return <WeeklyHRReportPage onViewCandidateProfile={handleViewCandidateProfile} />;
       case 'audit-logs':
         return <AuditLogsPage />;
       case 'users':

@@ -345,6 +345,7 @@ export interface Candidate {
 
   // Bench fields
   bench_status: BenchStatus;
+  resource_type?: 'Employee' | 'Contract Based' | 'Freelancer/Other' | string;
   bench_availability_date?: string | null;
   bench_primary_skills?: string[];
   bench_secondary_skills?: string[];
@@ -459,6 +460,7 @@ export interface BenchCandidate {
   current_company?: string | null;
   designation?: string | null;
   position?: string | null;
+  resource_type?: 'Employee' | 'Contract Based' | 'Freelancer/Other' | string;
   primary_skills: string[];
   secondary_skills: string[];
   notice_period?: string | null;
@@ -1121,5 +1123,53 @@ export interface CandidateHistoryPageResponse {
   feed: CandidateStatusHistoryFeedItem[];
   candidates: CandidateHistoryLifecycleItem[];
   total_events: number;
+}
+
+export interface WeeklyReportDailyMetric {
+  date: string;
+  day_name: string;
+  candidates_added: number;
+  cvs_submitted: number;
+  interviews_scheduled: number;
+  interviews_completed: number;
+  selected: number;
+  rejected: number;
+  offers: number;
+  joined: number;
+}
+
+export interface WeeklyReportStageFunnel {
+  stage: string;
+  count: number;
+  conversion_rate: number;
+}
+
+export interface WeeklyHRReportResponse {
+  start_date: string;
+  end_date: string;
+  week_label: string;
+  total_candidates: number;
+  cvs_submitted: number;
+  candidates_selected: number;
+  candidates_rejected: number;
+  interviews_scheduled: number;
+  interviews_completed: number;
+  candidates_hired: number;
+  candidates_on_hold: number;
+  candidates_joined: number;
+  daily_breakdown: WeeklyReportDailyMetric[];
+  pipeline_funnel: WeeklyReportStageFunnel[];
+  status_distribution: Record<string, number>;
+  top_positions: Array<{ position: string; count: number }>;
+  top_recruiters?: Array<{ recruiter_name: string; count: number }>;
+  recent_submissions?: Array<{
+    id: string;
+    submission_code: string;
+    candidate_name: string;
+    client_name: string;
+    position: string;
+    status: string;
+    date: string;
+  }>;
 }
 

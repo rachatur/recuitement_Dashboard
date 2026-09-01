@@ -348,20 +348,29 @@ def classify_candidate_skills(
     return primary_skills, secondary_skills
 
 def infer_position_and_skills(
-    current_designation: Optional[str],
-    skills: List[str]
+    current_designation: Optional[str] = None,
+    skills: Optional[List[str]] = None,
+    all_skills: Optional[List[str]] = None,
+    stored_primary: Optional[List[str]] = None,
+    stored_secondary: Optional[List[str]] = None,
+    raw_designation: Optional[str] = None
 ) -> Tuple[str, List[str], List[str]]:
     """
     Helper to accurately infer position and classify primary/secondary skills for existing database records.
     """
-    skills_list = skills or []
-    pos = current_designation
+    pos = current_designation or raw_designation
+    skills_list = skills or all_skills or []
 
     # If position is blank, generic "Software Engineer", or "Software Developer", infer from skills
     if not pos or pos.strip() in ["", "Software Engineer", "Software Developer", "Applicant", "Developer"]:
         pos = extract_position_from_text("", "", skills_list)
 
-    primary, secondary = classify_candidate_skills(skills_list, pos, "")
+    if stored_primary and len(stored_primary) > 0:
+        primary = stored_primary
+        secondary = stored_secondary or []
+    else:
+        primary, secondary = classify_candidate_skills(skills_list, pos, "")
+
     return pos, primary, secondary
 
 def parse_candidate_from_text(raw_text: str, filename: str = "") -> Dict[str, Any]:
@@ -519,6 +528,13 @@ def parse_candidate_from_text(raw_text: str, filename: str = "") -> Dict[str, An
         "date_of_birth": "",
         "summary": f"{position} with {exp_years or 2} years of experience specializing in {', '.join(primary_skills[:4])}."
     }
+
+def parse_cv_document(filename: str, content: bytes) -> Dict[str, Any]:
+    """
+    Directly extracts and parses candidate details from file content bytes.
+    """
+    raw_text = extract_text_from_file(content, filename)
+    return parse_candidate_from_text(raw_text, filename)
 
 def validate_whatsapp_eligibility(
     db: Session,

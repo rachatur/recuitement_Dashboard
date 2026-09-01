@@ -417,6 +417,7 @@ class CandidateBase(BaseModel):
 
     # Bench fields
     bench_status: BenchStatusEnum = BenchStatusEnum.NOT_ON_BENCH
+    resource_type: Optional[str] = "Employee"  # Employee, Contract Based, Freelancer/Other
     bench_availability_date: Optional[datetime] = None
     bench_primary_skills: List[str] = []
     bench_secondary_skills: List[str] = []
@@ -437,6 +438,7 @@ class CandidateUpdate(BaseModel):
     current_company: Optional[str] = None
     current_designation: Optional[str] = None
     position: Optional[str] = None
+    resource_type: Optional[str] = None
     current_ctc: Optional[float] = None
     expected_ctc: Optional[float] = None
     employment_history: Optional[List[EmploymentHistoryItem]] = None
@@ -651,6 +653,8 @@ class BenchCandidateResponse(BaseModel):
     relevant_experience: float
     current_company: Optional[str] = None
     designation: Optional[str] = None
+    position: Optional[str] = None
+    resource_type: str = "Employee"  # Employee, Contract Based, Freelancer/Other
     primary_skills: List[str] = []
     secondary_skills: List[str] = []
     notice_period: Optional[str] = None
@@ -672,6 +676,7 @@ class BenchCandidateResponse(BaseModel):
 
 class BenchStatusUpdateRequest(BaseModel):
     bench_status: BenchStatusEnum
+    resource_type: Optional[str] = None
     availability_date: Optional[datetime] = None
     assigned_requirement_id: Optional[str] = None
     notes: Optional[str] = None
@@ -693,6 +698,32 @@ class RequirementMatchResultResponse(BaseModel):
     required_skills: List[str] = []
     total_candidates_evaluated: int
     matched_candidates: List[RequirementMatchCandidateResponse]
+
+class BulkCVProcessItem(BaseModel):
+    file_name: str
+    status: str = "Completed"  # Completed, Failed, Skipped
+    candidate_id: Optional[str] = None
+    candidate_name: Optional[str] = None
+    email: Optional[str] = None
+    phone: Optional[str] = None
+    whatsapp_eligibility: Optional[str] = None
+    is_duplicate: bool = False
+    duplicate_reason: Optional[str] = None
+    error_message: Optional[str] = None
+    retry_available: bool = False
+
+class BulkCVUploadResponse(BaseModel):
+    total_uploaded: int = 0
+    successfully_processed: int = 0
+    failed_count: int = 0
+    duplicates_detected: int = 0
+    new_candidates_created: int = 0
+    whatsapp_eligible_count: int = 0
+    consent_required_count: int = 0
+    invalid_numbers_count: int = 0
+    items: List[BulkCVProcessItem] = []
+
+BulkCVUploadSummaryResponse = BulkCVUploadResponse
 
 # ----------------- WHATSAPP INTEGRATION & SETTINGS -----------------
 
@@ -1459,4 +1490,42 @@ class AIAssistantChatResponse(BaseModel):
     data: Optional[Dict[str, Any]] = {}
     suggested_prompts: List[str] = []
     created_at: datetime = Field(default_factory=datetime.utcnow)
+
+class WeeklyReportDailyMetric(BaseModel):
+    date: str
+    day_name: str
+    candidates_added: int = 0
+    cvs_submitted: int = 0
+    interviews_scheduled: int = 0
+    interviews_completed: int = 0
+    selected: int = 0
+    rejected: int = 0
+    offers: int = 0
+    joined: int = 0
+
+class WeeklyReportStageFunnel(BaseModel):
+    stage: str
+    count: int
+    conversion_rate: float = 100.0
+
+class WeeklyHRReportResponse(BaseModel):
+    start_date: str
+    end_date: str
+    week_label: str
+    total_candidates: int = 0
+    cvs_submitted: int = 0
+    candidates_selected: int = 0
+    candidates_rejected: int = 0
+    interviews_scheduled: int = 0
+    interviews_completed: int = 0
+    candidates_hired: int = 0
+    candidates_on_hold: int = 0
+    candidates_joined: int = 0
+    daily_breakdown: List[WeeklyReportDailyMetric] = []
+    pipeline_funnel: List[WeeklyReportStageFunnel] = []
+    status_distribution: Dict[str, int] = {}
+    top_positions: List[Dict[str, Any]] = []
+    top_recruiters: List[Dict[str, Any]] = []
+    top_clients: List[Dict[str, Any]] = []
+    recent_submissions: List[Dict[str, Any]] = []
 

@@ -11,7 +11,7 @@ from app.schemas import (
     BenchCandidateResponse, RequirementMatchResultResponse,
     RequirementMatchCandidateResponse, WhatsAppEligibilityInfo
 )
-from app.services.cv_extraction_service import validate_whatsapp_eligibility
+from app.services.cv_extraction_service import validate_whatsapp_eligibility, infer_position_and_skills
 
 logger = logging.getLogger(__name__)
 
@@ -22,14 +22,24 @@ def build_bench_candidate_response(c: Candidate, db: Session) -> BenchCandidateR
     bench = c.bench_resource
     bench_status = bench.bench_status if bench else (c.bench_status or BenchStatusEnum.AVAILABLE)
     avail_date = bench.availability_date if bench else c.bench_availability_date
-    p_skills = bench.primary_skills if bench and bench.primary_skills else (c.skills[:5] if c.skills else [])
-    s_skills = bench.secondary_skills if bench and bench.secondary_skills else (c.skills[5:] if c.skills and len(c.skills) > 5 else [])
+    
+    # Dynamic Position & Skills normalization
+    inferred_pos, p_skills, s_skills = infer_position_and_skills(
+        raw_designation=c.current_designation,
+        all_skills=c.skills or [],
+        stored_primary=getattr(c, "bench_primary_skills", None) or (bench.primary_skills if bench else []),
+        stored_secondary=getattr(c, "bench_secondary_skills", None) or (bench.secondary_skills if bench else [])
+    )
+    
     assigned_req = bench.assigned_requirement if bench else None
     
     # Latest resume document
     latest_doc = c.documents[-1] if c.documents else None
     resume_name = latest_doc.file_name if latest_doc else None
-    resume_url = latest_doc.file_url if latest_doc else None
+    resume_url = f"/api/v1/candidates/{c.id}/cv/download"
+
+    # Resource type (Employee, Contract Based, Freelancer/Other)
+    res_type = getattr(c, "resource_type", None) or "Employee"
 
     # WhatsApp eligibility
     eligibility = validate_whatsapp_eligibility(
@@ -53,7 +63,9 @@ def build_bench_candidate_response(c: Candidate, db: Session) -> BenchCandidateR
         total_experience=c.total_experience or 0.0,
         relevant_experience=c.relevant_experience or 0.0,
         current_company=c.current_company,
-        designation=c.current_designation or "Software Engineer",
+        designation=c.current_designation or inferred_pos,
+        position=inferred_pos,
+        resource_type=res_type,
         primary_skills=p_skills,
         secondary_skills=s_skills,
         notice_period=c.notice_period or f"{c.notice_period_days} Days",
@@ -83,6 +95,7 @@ def query_bench_candidates(
     location: Optional[str] = None,
     designation: Optional[str] = None,
     bench_status: Optional[str] = None,
+    resource_type: Optional[str] = None,
     notice_period: Optional[str] = None,
     whatsapp_eligible_only: bool = False,
     consent_status: Optional[str] = None
@@ -94,6 +107,8 @@ def query_bench_candidates(
 
     if bench_status:
         query = query.filter(Candidate.bench_status == bench_status)
+    if resource_type:
+        query = query.filter(Candidate.resource_type == resource_type)
     if min_exp is not None:
         query = query.filter(Candidate.total_experience >= min_exp)
     if max_exp is not None:
@@ -122,7 +137,7 @@ def query_bench_candidates(
 
     for c in candidates:
         if skill:
-            cand_skills_lower = [s.lower() for s in (c.skills or [])]
+            cand_skills_lower = [s.lower() for s in (c.skills or [])] + [s.lower() for s in (c.bench_primary_skills or [])]
             if skill.lower() not in cand_skills_lower:
                 continue
 
@@ -142,9 +157,11 @@ def match_candidates_to_job_requirement(
 ) -> RequirementMatchResultResponse:
     """
     Intelligently scores and matches bench (or talent pool) candidates against a specific job requirement:
-    - Skill overlap (60% weight)
-    - Experience fit (25% weight)
-    - Location & Notice Period fit (15% weight)
+    - Position/Job Title match (25% weight)
+    - Primary Skills overlap (40% weight)
+    - Secondary/Supporting Skills overlap (15% weight)
+    - Experience fit (15% weight)
+    - Location & Availability fit (5% weight)
     """
     req = db.query(JobRequirement).filter(JobRequirement.id == requirement_id).first()
     if not req:
@@ -155,50 +172,76 @@ def match_candidates_to_job_requirement(
         query = query.filter(Candidate.bench_status != BenchStatusEnum.NOT_ON_BENCH)
     
     candidates = query.all()
+    req_title_lower = (req.job_title or "").strip().lower()
     req_skills = [s.strip().lower() for s in (req.required_skills or [])]
     matched_results = []
 
     for c in candidates:
-        cand_skills = set(s.strip().lower() for s in (c.skills or []))
+        bench_resp = build_bench_candidate_response(c, db)
+        cand_pos_lower = (bench_resp.position or c.current_designation or "").strip().lower()
+        
+        cand_primary = set(s.strip().lower() for s in bench_resp.primary_skills)
+        cand_secondary = set(s.strip().lower() for s in bench_resp.secondary_skills)
+        cand_all_skills = set(s.strip().lower() for s in (c.skills or [])) | cand_primary | cand_secondary
+
         matched = []
         missing = []
 
         for rs in req.required_skills or []:
-            if rs.strip().lower() in cand_skills:
+            if rs.strip().lower() in cand_all_skills:
                 matched.append(rs)
             else:
                 missing.append(rs)
 
-        # 1. Skill Score (0 to 60)
-        skill_score = (len(matched) / max(len(req_skills), 1)) * 60.0
+        # 1. Position / Job Title Score (0 to 25)
+        pos_score = 0.0
+        if req_title_lower and cand_pos_lower:
+            if req_title_lower == cand_pos_lower or req_title_lower in cand_pos_lower or cand_pos_lower in req_title_lower:
+                pos_score = 25.0
+            else:
+                # Check keyword overlap in job titles (e.g. "Oracle", "Java", "React", "Developer")
+                req_words = set(req_title_lower.split())
+                cand_words = set(cand_pos_lower.split())
+                common_words = req_words.intersection(cand_words) - {"developer", "engineer", "senior", "lead", "junior"}
+                if common_words:
+                    pos_score = 20.0
+                elif req_words.intersection(cand_words):
+                    pos_score = 10.0
 
-        # 2. Experience Score (0 to 25)
+        # 2. Primary & Secondary Skill Score (0 to 55)
+        primary_matches = sum(1 for rs in req.required_skills or [] if rs.strip().lower() in cand_primary)
+        other_matches = len(matched) - primary_matches
+        
+        if req_skills:
+            skill_score = (primary_matches / len(req_skills)) * 40.0 + (other_matches / len(req_skills)) * 15.0
+        else:
+            skill_score = 40.0 if pos_score > 0 else 20.0
+
+        # 3. Experience Score (0 to 15)
         cand_exp = c.total_experience or 0.0
         req_min = req.experience_min or 0.0
         if cand_exp >= req_min:
-            exp_score = 25.0
-            exp_fit = "Optimal Match" if cand_exp <= (req_min + 3) else "Senior / Overqualified"
+            exp_score = 15.0
+            exp_fit = f"{cand_exp} Years (Meets {req_min}+ Years requirement)"
         else:
-            exp_score = max(0.0, (cand_exp / max(req_min, 1.0)) * 25.0)
-            exp_fit = "Under Years Requirement"
+            exp_score = max(0.0, (cand_exp / max(req_min, 1.0)) * 15.0)
+            exp_fit = f"{cand_exp} Years (Under {req_min} Years requirement)"
 
-        # 3. Location & Notice fit (0 to 15)
-        loc_score = 10.0
-        if req.location and c.location and req.location.lower() in c.location.lower():
-            loc_score = 15.0
+        # 4. Location & Availability (0 to 5)
+        loc_score = 5.0
+        if req.location and c.location and req.location.lower() not in c.location.lower():
+            loc_score = 2.5
 
-        total_match = min(100, int(round(skill_score + exp_score + loc_score)))
+        total_match = min(100, int(round(pos_score + skill_score + exp_score + loc_score)))
 
         if total_match >= 85:
-            rec = "Top Match — Highly recommended for immediate WhatsApp outreach & submission."
+            rec = f"Top Match ({total_match}%) — Recommended for immediate client submission & interview scheduling."
         elif total_match >= 65:
-            rec = "Strong Fit — Good skill alignment, verify specific project requirements."
+            rec = f"Strong Fit ({total_match}%) — Good alignment on core stack and experience."
         elif total_match >= 45:
-            rec = "Moderate Fit — Partially matches required stack; review experience."
+            rec = f"Moderate Fit ({total_match}%) — Partial stack overlap; review candidate profile."
         else:
-            rec = "Low Fit — Significant skill or experience gaps."
-
-        bench_resp = build_bench_candidate_response(c, db)
+            rec = f"Low Fit ({total_match}%) — Significant position or skill gaps."
 
         matched_results.append(
             RequirementMatchCandidateResponse(

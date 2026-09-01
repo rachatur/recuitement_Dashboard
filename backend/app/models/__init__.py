@@ -424,6 +424,7 @@ class Candidate(Base):
 
     # Bench specific attributes
     bench_status = Column(SQLEnum(BenchStatusEnum), default=BenchStatusEnum.NOT_ON_BENCH, nullable=False)
+    resource_type = Column(String(50), default="Employee", nullable=True)  # Employee, Contract Based, Freelancer/Other
     bench_availability_date = Column(DateTime, nullable=True)
     bench_primary_skills = Column(JSON, default=list)
     bench_secondary_skills = Column(JSON, default=list)

@@ -150,7 +150,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab }) => 
               </button>
             )}
 
-            {/* Dedicated Bench Section */}
+            {/* Dedicated Bench Resource Pool Section */}
             {isRoleAllowed(['SUPER_ADMIN', 'ADMIN', 'RECRUITER', 'TEAM_LEAD', 'VIEWER']) && (
               <button
                 onClick={() => setActiveTab('bench')}
@@ -162,10 +162,10 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab }) => 
               >
                 <div className="flex items-center gap-3 truncate">
                   <Award className="w-4 h-4 text-emerald-400 shrink-0" />
-                  <span className="truncate font-bold text-emerald-300">Bench Pool</span>
+                  <span className="truncate font-bold text-emerald-300">Bench Resource Pool</span>
                 </div>
                 <span className="text-[9px] font-bold px-1.5 py-0.5 bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded-full">
-                  Live
+                  Pool
                 </span>
               </button>
             )}
@@ -341,6 +341,25 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab }) => 
                 <span className="text-[9px] font-extrabold px-1.5 py-0.2 bg-gradient-to-r from-brand-500/30 to-indigo-500/30 text-brand-300 border border-brand-400/40 rounded-full flex items-center gap-1">
                   <Sparkles className="w-2.5 h-2.5" />
                   Copilot
+                </span>
+              </button>
+            )}
+
+            {isRoleAllowed(['SUPER_ADMIN', 'ADMIN', 'TEAM_LEAD', 'RECRUITER', 'VIEWER']) && (
+              <button
+                onClick={() => setActiveTab('weekly-hr-report')}
+                className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-semibold transition-all ${
+                  activeTab === 'weekly-hr-report'
+                    ? 'bg-blue-600/20 text-blue-300 border border-blue-500/30 shadow-sm'
+                    : 'text-slate-400 hover:text-blue-300 hover:bg-slate-900/60'
+                }`}
+              >
+                <div className="flex items-center gap-3 truncate">
+                  <BarChart3 className="w-4 h-4 text-blue-400 shrink-0" />
+                  <span className="truncate">Weekly HR Report</span>
+                </div>
+                <span className="text-[9px] font-bold px-1.5 py-0.5 bg-blue-500/20 text-blue-400 border border-blue-500/30 rounded-full">
+                  Report
                 </span>
               </button>
             )}

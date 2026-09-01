@@ -2,14 +2,18 @@ from typing import List, Optional, Dict, Any
 from datetime import datetime, timedelta, timezone
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
-from sqlalchemy import func
+from sqlalchemy import func, or_
 from app.core.database import get_db
 from app.core.rbac import get_current_active_user, RoleEnum
 from app.models import (
     User, Candidate, CVSubmission, Interview, Offer, JoiningDetail,
     CandidateStatusHistory, Client, ClientFeedback, JobRequirement, RequirementStatusEnum
 )
-from app.schemas import TimeSeriesPoint, TimeMetricsResponse, RecruiterPerformanceItem, ClientPerformanceItem
+from app.schemas import (
+    TimeSeriesPoint, TimeMetricsResponse, RecruiterPerformanceItem,
+    ClientPerformanceItem, WeeklyHRReportResponse, WeeklyReportDailyMetric,
+    WeeklyReportStageFunnel
+)
 
 router = APIRouter(prefix="/analytics", tags=["Time-Series Analytics & Reports"])
 
@@ -213,3 +217,185 @@ def get_client_efficiency(
             avg_response_time_days=avg_resp_days
         ))
     return results
+
+@router.get("/weekly-hr-report", response_model=WeeklyHRReportResponse)
+def get_weekly_hr_report(
+    start_date: Optional[str] = Query(None, description="Start date in YYYY-MM-DD format"),
+    end_date: Optional[str] = Query(None, description="End date in YYYY-MM-DD format"),
+    week_offset: int = Query(0, description="0 for current week, -1 for previous week, etc."),
+    client_id: Optional[str] = Query(None),
+    recruiter_id: Optional[str] = Query(None),
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Weekly HR Recruitment Report:
+    - Calculates Total Candidates, CVs Submitted, Candidates Selected, Candidates Rejected,
+      Interviews Scheduled, Interviews Completed, Candidates Hired, Candidates On Hold, Candidates Joined.
+    - Provides day-by-day metrics, pipeline funnel conversions, and status breakdown.
+    """
+    now = datetime.now(timezone.utc)
+
+    if start_date and end_date:
+        try:
+            p_start = datetime.fromisoformat(start_date).replace(hour=0, minute=0, second=0, microsecond=0, tzinfo=timezone.utc)
+            p_end = datetime.fromisoformat(end_date).replace(hour=23, minute=59, second=59, microsecond=999999, tzinfo=timezone.utc)
+            week_num = p_start.isocalendar()[1]
+            week_label = f"Week {week_num} ({p_start.strftime('%b %d')} - {p_end.strftime('%b %d, %Y')})"
+        except Exception:
+            # Fallback to current week if parsing fails
+            curr_monday = now - timedelta(days=now.weekday())
+            p_start = curr_monday.replace(hour=0, minute=0, second=0, microsecond=0)
+            p_end = (p_start + timedelta(days=6)).replace(hour=23, minute=59, second=59, microsecond=999999)
+            week_num = p_start.isocalendar()[1]
+            week_label = f"Week {week_num} ({p_start.strftime('%b %d')} - {p_end.strftime('%b %d, %Y')})"
+    else:
+        # Determine week bounds from offset
+        curr_monday = now - timedelta(days=now.weekday()) + timedelta(weeks=week_offset)
+        p_start = curr_monday.replace(hour=0, minute=0, second=0, microsecond=0)
+        p_end = (p_start + timedelta(days=6)).replace(hour=23, minute=59, second=59, microsecond=999999)
+        week_num = p_start.isocalendar()[1]
+        
+        if week_offset == 0:
+            prefix = "Current Week"
+        elif week_offset == -1:
+            prefix = "Last Week"
+        else:
+            prefix = f"{abs(week_offset)} Weeks Ago" if week_offset < 0 else f"+{week_offset} Weeks"
+            
+        week_label = f"{prefix} — Week {week_num} ({p_start.strftime('%b %d')} - {p_end.strftime('%b %d, %Y')})"
+
+    # Base queries filtered by date range
+    cand_q = db.query(Candidate).filter(Candidate.created_at.between(p_start, p_end))
+    sub_q = db.query(CVSubmission).filter(CVSubmission.created_at.between(p_start, p_end))
+    int_q = db.query(Interview).filter(
+        or_(
+            Interview.interview_date.between(p_start, p_end),
+            Interview.created_at.between(p_start, p_end)
+        )
+    )
+    off_q = db.query(Offer).filter(Offer.created_at.between(p_start, p_end))
+    joi_q = db.query(JoiningDetail).filter(
+        or_(
+            JoiningDetail.joining_date.between(p_start, p_end),
+            JoiningDetail.created_at.between(p_start, p_end)
+        )
+    )
+
+    if client_id:
+        sub_q = sub_q.filter(CVSubmission.client_id == client_id)
+        int_q = int_q.filter(Interview.client_id == client_id)
+        off_q = off_q.filter(Offer.client_id == client_id)
+
+    if recruiter_id:
+        cand_q = cand_q.filter(Candidate.recruiter_id == recruiter_id)
+        sub_q = sub_q.filter(CVSubmission.recruiter_id == recruiter_id)
+
+    total_candidates = cand_q.count()
+    cvs_submitted = sub_q.count()
+    candidates_selected = sub_q.filter(CVSubmission.status.in_(["SELECTED", "OFFER", "JOINED", "SHORTLISTED"])).count()
+    candidates_rejected = sub_q.filter(CVSubmission.status == "REJECTED").count()
+    interviews_scheduled = int_q.count()
+    interviews_completed = int_q.filter(Interview.status == "COMPLETED").count()
+    candidates_hired = off_q.filter(Offer.status.in_(["ACCEPTED", "RELEASED"])).count()
+    
+    # On hold count
+    candidates_on_hold = db.query(Candidate).filter(
+        Candidate.status == "ON_HOLD",
+        Candidate.updated_at.between(p_start, p_end)
+    ).count()
+
+    candidates_joined = joi_q.filter(JoiningDetail.status == "JOINED").count()
+
+    # Day-by-day activity points
+    daily_metrics = []
+    num_days = max(1, (p_end - p_start).days + 1)
+    day_cursor = p_start
+    for _ in range(min(num_days, 14)):
+        day_end = (day_cursor + timedelta(days=1)).replace(hour=0, minute=0, second=0, microsecond=0)
+        
+        d_cand = db.query(Candidate).filter(Candidate.created_at >= day_cursor, Candidate.created_at < day_end).count()
+        d_sub = db.query(CVSubmission).filter(CVSubmission.created_at >= day_cursor, CVSubmission.created_at < day_end).count()
+        d_int_sched = db.query(Interview).filter(Interview.interview_date >= day_cursor, Interview.interview_date < day_end).count()
+        d_int_comp = db.query(Interview).filter(Interview.interview_date >= day_cursor, Interview.interview_date < day_end, Interview.status == "COMPLETED").count()
+        d_sel = db.query(CVSubmission).filter(CVSubmission.created_at >= day_cursor, CVSubmission.created_at < day_end, CVSubmission.status.in_(["SELECTED", "OFFER", "JOINED"])).count()
+        d_rej = db.query(CVSubmission).filter(CVSubmission.created_at >= day_cursor, CVSubmission.created_at < day_end, CVSubmission.status == "REJECTED").count()
+        d_off = db.query(Offer).filter(Offer.created_at >= day_cursor, Offer.created_at < day_end).count()
+        d_joi = db.query(JoiningDetail).filter(JoiningDetail.created_at >= day_cursor, JoiningDetail.created_at < day_end, JoiningDetail.status == "JOINED").count()
+
+        daily_metrics.append(WeeklyReportDailyMetric(
+            date=day_cursor.strftime("%Y-%m-%d"),
+            day_name=day_cursor.strftime("%a (%b %d)"),
+            candidates_added=d_cand,
+            cvs_submitted=d_sub,
+            interviews_scheduled=d_int_sched,
+            interviews_completed=d_int_comp,
+            selected=d_sel,
+            rejected=d_rej,
+            offers=d_off,
+            joined=d_joi
+        ))
+        day_cursor = day_end
+
+    # Pipeline Funnel
+    base_funnel = max(total_candidates, 1)
+    pipeline_funnel = [
+        WeeklyReportStageFunnel(stage="Sourced Candidates", count=total_candidates, conversion_rate=100.0),
+        WeeklyReportStageFunnel(stage="CVs Submitted", count=cvs_submitted, conversion_rate=round((cvs_submitted / base_funnel) * 100.0, 1)),
+        WeeklyReportStageFunnel(stage="Interviews Scheduled", count=interviews_scheduled, conversion_rate=round((interviews_scheduled / max(cvs_submitted, 1)) * 100.0, 1)),
+        WeeklyReportStageFunnel(stage="Candidates Selected", count=candidates_selected, conversion_rate=round((candidates_selected / max(interviews_scheduled, 1)) * 100.0, 1)),
+        WeeklyReportStageFunnel(stage="Offers Released", count=candidates_hired, conversion_rate=round((candidates_hired / max(candidates_selected, 1)) * 100.0, 1)),
+        WeeklyReportStageFunnel(stage="Candidates Joined", count=candidates_joined, conversion_rate=round((candidates_joined / max(candidates_hired, 1)) * 100.0, 1)),
+    ]
+
+    # Status distribution
+    status_distribution = {
+        "Sourced": total_candidates,
+        "Submitted": cvs_submitted,
+        "Selected": candidates_selected,
+        "Rejected": candidates_rejected,
+        "Interviews": interviews_scheduled,
+        "Hired": candidates_hired,
+        "On Hold": candidates_on_hold,
+        "Joined": candidates_joined
+    }
+
+    # Top positions in the week
+    pos_counts: Dict[str, int] = {}
+    for cand in cand_q.all():
+        pos = cand.current_designation or "Software Engineer"
+        pos_counts[pos] = pos_counts.get(pos, 0) + 1
+    top_positions = [{"position": k, "count": v} for k, v in sorted(pos_counts.items(), key=lambda x: x[1], reverse=True)[:6]]
+
+    # Recent submissions in the week
+    recent_submissions = []
+    for sub in sub_q.order_by(CVSubmission.created_at.desc()).limit(10).all():
+        recent_submissions.append({
+            "id": str(sub.id),
+            "submission_code": sub.submission_code,
+            "candidate_name": f"{sub.candidate.first_name} {sub.candidate.last_name}" if sub.candidate else "Candidate",
+            "client_name": sub.client.name if sub.client else "Client",
+            "position": sub.requirement.job_title if sub.requirement else "Role",
+            "status": str(sub.status.value if hasattr(sub.status, 'value') else sub.status),
+            "date": sub.created_at.strftime("%Y-%m-%d %H:%M") if sub.created_at else ""
+        })
+
+    return WeeklyHRReportResponse(
+        start_date=p_start.strftime("%Y-%m-%d"),
+        end_date=p_end.strftime("%Y-%m-%d"),
+        week_label=week_label,
+        total_candidates=total_candidates,
+        cvs_submitted=cvs_submitted,
+        candidates_selected=candidates_selected,
+        candidates_rejected=candidates_rejected,
+        interviews_scheduled=interviews_scheduled,
+        interviews_completed=interviews_completed,
+        candidates_hired=candidates_hired,
+        candidates_on_hold=candidates_on_hold,
+        candidates_joined=candidates_joined,
+        daily_breakdown=daily_metrics,
+        pipeline_funnel=pipeline_funnel,
+        status_distribution=status_distribution,
+        top_positions=top_positions,
+        recent_submissions=recent_submissions
+    )

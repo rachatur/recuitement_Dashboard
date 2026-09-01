@@ -21,6 +21,7 @@ def init_db(db: Session = None):
             conn.execute(text("ALTER TABLE job_requirements ADD COLUMN IF NOT EXISTS closed_date TIMESTAMP;"))
             conn.execute(text("ALTER TABLE job_requirements ADD COLUMN IF NOT EXISTS status_updated_at TIMESTAMP;"))
             conn.execute(text("ALTER TABLE candidates ADD COLUMN IF NOT EXISTS employment_history JSONB DEFAULT '[]'::jsonb;"))
+            conn.execute(text("ALTER TABLE candidates ADD COLUMN IF NOT EXISTS resource_type VARCHAR(50) DEFAULT 'Employee';"))
             conn.commit()
     except Exception as e:
         logger.warning(f"Column migration warning (safe to ignore if non-pg): {e}")
