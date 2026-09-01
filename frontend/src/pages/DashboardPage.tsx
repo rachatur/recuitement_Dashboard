@@ -6,11 +6,10 @@ import {
   Briefcase, Users, FileText, CheckSquare, Send,
   MessageSquare, Calendar, Award, FileCheck2, UserCheck,
   TrendingUp, Clock, Filter, Sparkles, ArrowRight, RefreshCw,
-  Radio, Layers, CheckCircle2, ShieldCheck, Zap
+  Radio, Layers, CheckCircle2, ShieldCheck, Zap, PieChart as PieIcon
 } from 'lucide-react';
 import {
-  AreaChart, Area, BarChart, Bar, LineChart, Line, XAxis, YAxis,
-  CartesianGrid, Tooltip, ResponsiveContainer, Legend
+  PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend
 } from 'recharts';
 
 export const DashboardPage: React.FC = () => {
@@ -60,14 +59,59 @@ export const DashboardPage: React.FC = () => {
 
   const kpis = data?.kpis;
   const funnel = data?.pipeline_funnel || data?.funnel || [];
-  const timeseries = data?.timeseries || [];
-  const timeMetrics = data?.time_metrics;
-  const clientPerf = data?.client_performance || [];
-  const recruiterPerf = data?.recruiter_performance || [];
   const benchKpis = data?.bench_kpis;
   const waKpis = data?.whatsapp_kpis;
   const posDist = data?.position_status_distribution || {};
   const candDist = data?.candidate_status_distribution || {};
+
+  // Candidate Status Pie Data
+  const candStatusColors: Record<string, string> = {
+    'Available': '#0ea5e9',      // Sky blue
+    'Shortlisted': '#6366f1',    // Indigo
+    'Interviewing': '#8b5cf6',   // Violet
+    'Selected': '#10b981',       // Emerald
+    'Joined': '#06b6d4',         // Cyan
+    'On Hold': '#f59e0b',        // Amber
+    'Rejected': '#f43f5e',       // Rose
+    'Submitted': '#3b82f6',      // Blue
+  };
+
+  const candPieData = Object.entries(candDist)
+    .filter(([_, val]) => (val as number) > 0)
+    .map(([key, val]) => ({
+      name: key,
+      value: val as number,
+      color: candStatusColors[key] || '#94a3b8'
+    }));
+
+  const totalCandPieCount = candPieData.reduce((sum, item) => sum + item.value, 0) || kpis?.total_candidates || 0;
+
+  // Position Status Pie Data
+  const posStatusColors: Record<string, string> = {
+    'Open': '#10b981',        // Emerald
+    'On Hold': '#f59e0b',     // Amber
+    'Closed': '#64748b',      // Slate
+    'Partially Filled': '#06b6d4'
+  };
+
+  const posPieData = Object.entries(posDist)
+    .filter(([_, val]) => (val as number) > 0)
+    .map(([key, val]) => ({
+      name: key,
+      value: val as number,
+      color: posStatusColors[key] || '#38bdf8'
+    }));
+
+  const totalPosPieCount = posPieData.reduce((sum, item) => sum + item.value, 0) || kpis?.open_requirements || 0;
+
+  // Bench Pool Pie Data
+  const benchPieData = [
+    { name: 'Available', value: benchKpis?.available || 0, color: '#10b981' },
+    { name: 'Interviewing', value: benchKpis?.interviewing || 0, color: '#8b5cf6' },
+    { name: 'Allocated', value: benchKpis?.allocated || 0, color: '#0ea5e9' },
+  ].filter(item => item.value > 0);
+
+  const totalBenchCount = benchKpis?.total_bench || benchPieData.reduce((sum, item) => sum + item.value, 0) || 0;
 
   return (
     <div className="space-y-6 pb-12">
@@ -90,7 +134,7 @@ export const DashboardPage: React.FC = () => {
             <select
               value={selectedClient}
               onChange={(e) => setSelectedClient(e.target.value)}
-              className="bg-transparent text-slate-200 focus:outline-none text-xs"
+              className="bg-transparent text-slate-200 focus:outline-none text-xs cursor-pointer"
             >
               <option value="" className="bg-slate-900 text-slate-200">All Clients</option>
               {clients.map((c) => (
@@ -101,12 +145,13 @@ export const DashboardPage: React.FC = () => {
             </select>
           </div>
 
-          {/* Recruiter Filter */}
+          {/* HR Recruiter Filter */}
           <div className="flex items-center gap-1 bg-slate-800 border border-slate-700 px-3 py-1.5 rounded-xl text-xs">
+            <Users className="w-3.5 h-3.5 text-indigo-400" />
             <select
               value={selectedRecruiter}
               onChange={(e) => setSelectedRecruiter(e.target.value)}
-              className="bg-transparent text-slate-200 focus:outline-none text-xs"
+              className="bg-transparent text-slate-200 focus:outline-none text-xs cursor-pointer"
             >
               <option value="" className="bg-slate-900 text-slate-200">All Recruiters</option>
               {recruiters.map((r) => (
@@ -134,7 +179,7 @@ export const DashboardPage: React.FC = () => {
           value={kpis?.open_requirements || kpis?.open_positions || 0}
           icon={Briefcase}
           color="brand"
-          change={`${posDist['OPEN'] || 0} active reqs`}
+          change={`${posDist['OPEN'] || posDist['Open'] || 0} active reqs`}
           isPositive={true}
         />
         <StatCard
@@ -293,152 +338,194 @@ export const DashboardPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Time-Series Charts Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Candidate Inflow vs. WhatsApp Outreach Volume */}
-        <div className="bg-slate-900/90 border border-slate-800 p-6 rounded-2xl shadow-xl">
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <h3 className="text-sm font-bold text-slate-100">Candidate Inflow vs. Outreach Activity</h3>
-              <p className="text-xs text-slate-400 mt-0.5">Daily talent added & WhatsApp outreach dispatches</p>
-            </div>
-          </div>
-          <div className="h-64 w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={timeseries}>
-                <defs>
-                  <linearGradient id="colorCands" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#0ea5e9" stopOpacity={0.4} />
-                    <stop offset="95%" stopColor="#0ea5e9" stopOpacity={0} />
-                  </linearGradient>
-                  <linearGradient id="colorSubs" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#10b981" stopOpacity={0.4} />
-                    <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
-                <XAxis dataKey="date" stroke="#64748b" fontSize={11} />
-                <YAxis stroke="#64748b" fontSize={11} />
-                <Tooltip
-                  contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', borderRadius: '12px', fontSize: '12px' }}
-                />
-                <Legend wrapperStyle={{ fontSize: '12px', paddingTop: '8px' }} />
-                <Area type="monotone" dataKey="candidates_added" name="Candidates Added" stroke="#0ea5e9" fillOpacity={1} fill="url(#colorCands)" />
-                <Area type="monotone" dataKey="cvs_submitted" name="CVs Submitted" stroke="#10b981" fillOpacity={1} fill="url(#colorSubs)" />
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-
-        {/* Interviews & Hiring Trends */}
-        <div className="bg-slate-900/90 border border-slate-800 p-6 rounded-2xl shadow-xl">
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <h3 className="text-sm font-bold text-slate-100">Interviews Held & Offers Extended</h3>
-              <p className="text-xs text-slate-400 mt-0.5">Evaluation stages and conversion over time</p>
-            </div>
-          </div>
-          <div className="h-64 w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={timeseries}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
-                <XAxis dataKey="date" stroke="#64748b" fontSize={11} />
-                <YAxis stroke="#64748b" fontSize={11} />
-                <Tooltip
-                  contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', borderRadius: '12px', fontSize: '12px' }}
-                />
-                <Legend wrapperStyle={{ fontSize: '12px', paddingTop: '8px' }} />
-                <Bar dataKey="interviews_held" name="Interviews" fill="#38bdf8" radius={[4, 4, 0, 0]} />
-                <Bar dataKey="offers" name="Offers" fill="#10b981" radius={[4, 4, 0, 0]} />
-                <Bar dataKey="joined" name="Joined" fill="#f59e0b" radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-      </div>
-
-      {/* Time Metrics Benchmarks & Leaderboards */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Time Metrics Card */}
-        <div className="bg-slate-900/90 border border-slate-800 p-6 rounded-2xl shadow-xl space-y-4">
-          <div className="flex items-center justify-between">
-            <h3 className="text-sm font-bold text-slate-100 flex items-center gap-2">
-              <Clock className="w-4 h-4 text-brand-400" />
-              Recruitment Velocity & Time Metrics
-            </h3>
-          </div>
-
-          <div className="space-y-3">
-            <div className="flex items-center justify-between p-2.5 bg-slate-950/60 rounded-xl border border-slate-800/80">
-              <span className="text-xs text-slate-300">Time to Screen</span>
-              <strong className="text-xs font-mono text-brand-300">{timeMetrics?.time_to_screen_hours ?? 0} hrs</strong>
-            </div>
-            <div className="flex items-center justify-between p-2.5 bg-slate-950/60 rounded-xl border border-slate-800/80">
-              <span className="text-xs text-slate-300">Time to Shortlist</span>
-              <strong className="text-xs font-mono text-brand-300">{timeMetrics?.time_to_shortlist_hours ?? 0} hrs</strong>
-            </div>
-            <div className="flex items-center justify-between p-2.5 bg-slate-950/60 rounded-xl border border-slate-800/80">
-              <span className="text-xs text-slate-300">Time to Submit CV</span>
-              <strong className="text-xs font-mono text-brand-300">{timeMetrics?.time_to_submit_hours ?? 0} hrs</strong>
-            </div>
-            <div className="flex items-center justify-between p-2.5 bg-slate-950/60 rounded-xl border border-slate-800/80">
-              <span className="text-xs text-slate-300">Client Response Latency</span>
-              <strong className="text-xs font-mono text-amber-300">{timeMetrics?.client_response_time_days ?? 0} days</strong>
-            </div>
-            <div className="flex items-center justify-between p-2.5 bg-slate-950/60 rounded-xl border border-slate-800/80">
-              <span className="text-xs text-slate-300">Time to Hire (End-to-End)</span>
-              <strong className="text-xs font-mono text-emerald-300">{timeMetrics?.time_to_hire_days ?? 0} days</strong>
-            </div>
-          </div>
-        </div>
-
-        {/* Client Performance Scorecard */}
-        <div className="bg-slate-900/90 border border-slate-800 p-6 rounded-2xl shadow-xl flex flex-col justify-between">
+      {/* Interactive Pie Charts Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {/* Pie Chart 1: Candidate Status Distribution */}
+        <div className="bg-slate-900/90 border border-slate-800 p-5 rounded-2xl shadow-xl flex flex-col justify-between">
           <div>
-            <h3 className="text-sm font-bold text-slate-100">Client Engagement & Latency</h3>
-            <p className="text-xs text-slate-400 mt-0.5 mb-4">Response speed & submission outcomes</p>
-            <div className="space-y-3">
-              {clientPerf.slice(0, 4).map((c) => (
-                <div key={c.client_id} className="p-3 bg-slate-950/60 rounded-xl border border-slate-800/80">
-                  <div className="flex items-center justify-between">
-                    <h5 className="font-semibold text-xs text-slate-200">{c.client_name}</h5>
-                    <span className="text-[10px] font-mono text-amber-300 bg-amber-950/50 px-1.5 py-0.5 rounded border border-amber-800/50">
-                      {c.avg_response_time_days}d avg response
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between text-[11px] text-slate-400 mt-2 font-mono">
-                    <span>{c.open_requirements} open reqs</span>
-                    <span>{c.cvs_submitted} submitted</span>
-                    <span className="text-emerald-400">{c.selections} hired</span>
-                  </div>
-                </div>
-              ))}
+            <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+              <div className="flex items-center gap-2">
+                <PieIcon className="w-4 h-4 text-sky-400" />
+                <h3 className="text-sm font-bold text-slate-100">Candidate Pipeline Status</h3>
+              </div>
+              <span className="text-[11px] font-bold px-2 py-0.5 bg-sky-500/20 text-sky-300 rounded border border-sky-500/30">
+                {totalCandPieCount} Total
+              </span>
             </div>
+
+            <div className="h-60 w-full relative my-2">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: '#0f172a',
+                      borderColor: '#334155',
+                      borderRadius: '12px',
+                      fontSize: '12px',
+                      color: '#fff'
+                    }}
+                    formatter={(value: any, name: any) => [
+                      `${value} Candidates (${totalCandPieCount ? Math.round((Number(value) / totalCandPieCount) * 100) : 0}%)`,
+                      name
+                    ]}
+                  />
+                  <Pie
+                    data={candPieData.length > 0 ? candPieData : [{ name: 'Available', value: 1, color: '#38bdf8' }]}
+                    dataKey="value"
+                    nameKey="name"
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={55}
+                    outerRadius={85}
+                    paddingAngle={3}
+                  >
+                    {candPieData.map((entry, index) => (
+                      <Cell key={`cell-cand-${index}`} fill={entry.color} stroke="#0f172a" strokeWidth={2} />
+                    ))}
+                  </Pie>
+                </PieChart>
+              </ResponsiveContainer>
+              <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                <span className="text-xl font-black text-white">{totalCandPieCount}</span>
+                <span className="text-[10px] text-slate-400 font-semibold uppercase">Candidates</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap gap-2 pt-2 border-t border-slate-800/80">
+            {candPieData.map((item, idx) => (
+              <div key={idx} className="flex items-center gap-1.5 text-xs bg-slate-950 px-2 py-1 rounded-lg border border-slate-800/80">
+                <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: item.color }} />
+                <span className="text-slate-300 font-medium">{item.name}:</span>
+                <span className="text-white font-bold">{item.value}</span>
+              </div>
+            ))}
           </div>
         </div>
 
-        {/* Recruiter Performance Leaderboard */}
-        <div className="bg-slate-900/90 border border-slate-800 p-6 rounded-2xl shadow-xl flex flex-col justify-between">
+        {/* Pie Chart 2: Job Requirements Status */}
+        <div className="bg-slate-900/90 border border-slate-800 p-5 rounded-2xl shadow-xl flex flex-col justify-between">
           <div>
-            <h3 className="text-sm font-bold text-slate-100">Recruiter Activity Leaderboard</h3>
-            <p className="text-xs text-slate-400 mt-0.5 mb-4">Top sourcing and candidate placement</p>
-            <div className="space-y-3">
-              {recruiterPerf.slice(0, 4).map((r) => (
-                <div key={r.recruiter_id} className="p-3 bg-slate-950/60 rounded-xl border border-slate-800/80">
-                  <div className="flex items-center justify-between">
-                    <h5 className="font-semibold text-xs text-slate-200">{r.recruiter_name}</h5>
-                    <span className="text-[10px] font-mono text-emerald-300 bg-emerald-950/50 px-1.5 py-0.5 rounded border border-emerald-800/50">
-                      {r.joining_count} joined
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between text-[11px] text-slate-400 mt-2 font-mono">
-                    <span>{r.candidates_added} sourced</span>
-                    <span>{r.cvs_submitted} submitted</span>
-                    <span>{r.interviews} interviewed</span>
-                  </div>
-                </div>
-              ))}
+            <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+              <div className="flex items-center gap-2">
+                <Briefcase className="w-4 h-4 text-emerald-400" />
+                <h3 className="text-sm font-bold text-slate-100">Job Positions Status</h3>
+              </div>
+              <span className="text-[11px] font-bold px-2 py-0.5 bg-emerald-500/20 text-emerald-300 rounded border border-emerald-500/30">
+                {totalPosPieCount} Jobs
+              </span>
             </div>
+
+            <div className="h-60 w-full relative my-2">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: '#0f172a',
+                      borderColor: '#334155',
+                      borderRadius: '12px',
+                      fontSize: '12px',
+                      color: '#fff'
+                    }}
+                    formatter={(value: any, name: any) => [
+                      `${value} Positions (${totalPosPieCount ? Math.round((Number(value) / totalPosPieCount) * 100) : 0}%)`,
+                      name
+                    ]}
+                  />
+                  <Pie
+                    data={posPieData.length > 0 ? posPieData : [{ name: 'Open', value: 1, color: '#10b981' }]}
+                    dataKey="value"
+                    nameKey="name"
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={55}
+                    outerRadius={85}
+                    paddingAngle={3}
+                  >
+                    {posPieData.map((entry, index) => (
+                      <Cell key={`cell-pos-${index}`} fill={entry.color} stroke="#0f172a" strokeWidth={2} />
+                    ))}
+                  </Pie>
+                </PieChart>
+              </ResponsiveContainer>
+              <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                <span className="text-xl font-black text-emerald-400">{totalPosPieCount}</span>
+                <span className="text-[10px] text-slate-400 font-semibold uppercase">Positions</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap gap-2 pt-2 border-t border-slate-800/80">
+            {posPieData.map((item, idx) => (
+              <div key={idx} className="flex items-center gap-1.5 text-xs bg-slate-950 px-2 py-1 rounded-lg border border-slate-800/80">
+                <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: item.color }} />
+                <span className="text-slate-300 font-medium">{item.name}:</span>
+                <span className="text-white font-bold">{item.value}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Pie Chart 3: Bench Talent Distribution */}
+        <div className="bg-slate-900/90 border border-slate-800 p-5 rounded-2xl shadow-xl flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+              <div className="flex items-center gap-2">
+                <Award className="w-4 h-4 text-teal-400" />
+                <h3 className="text-sm font-bold text-slate-100">Bench Talent Deployment</h3>
+              </div>
+              <span className="text-[11px] font-bold px-2 py-0.5 bg-teal-500/20 text-teal-300 rounded border border-teal-500/30">
+                {totalBenchCount} Bench
+              </span>
+            </div>
+
+            <div className="h-60 w-full relative my-2">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: '#0f172a',
+                      borderColor: '#334155',
+                      borderRadius: '12px',
+                      fontSize: '12px',
+                      color: '#fff'
+                    }}
+                    formatter={(value: any, name: any) => [
+                      `${value} Resources (${totalBenchCount ? Math.round((Number(value) / totalBenchCount) * 100) : 0}%)`,
+                      name
+                    ]}
+                  />
+                  <Pie
+                    data={benchPieData.length > 0 ? benchPieData : [{ name: 'Available', value: 1, color: '#10b981' }]}
+                    dataKey="value"
+                    nameKey="name"
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={55}
+                    outerRadius={85}
+                    paddingAngle={3}
+                  >
+                    {benchPieData.map((entry, index) => (
+                      <Cell key={`cell-bench-${index}`} fill={entry.color} stroke="#0f172a" strokeWidth={2} />
+                    ))}
+                  </Pie>
+                </PieChart>
+              </ResponsiveContainer>
+              <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                <span className="text-xl font-black text-teal-400">{totalBenchCount}</span>
+                <span className="text-[10px] text-slate-400 font-semibold uppercase">Bench Pool</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap gap-2 pt-2 border-t border-slate-800/80">
+            {benchPieData.map((item, idx) => (
+              <div key={idx} className="flex items-center gap-1.5 text-xs bg-slate-950 px-2 py-1 rounded-lg border border-slate-800/80">
+                <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: item.color }} />
+                <span className="text-slate-300 font-medium">{item.name}:</span>
+                <span className="text-white font-bold">{item.value}</span>
+              </div>
+            ))}
           </div>
         </div>
       </div>
