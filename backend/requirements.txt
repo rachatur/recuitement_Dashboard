@@ -1,15 +1,16 @@
-
-# Web Framework & Server
+# Web Framework & ASGI Server
 fastapi>=0.110.0,<1.0.0
 uvicorn[standard]>=0.28.0,<1.0.0
 starlette>=0.36.0,<1.0.0
 python-multipart>=0.0.9
 aiofiles>=23.2.1
+websockets>=12.0.0
 
-# Data Validation & Settings
+# Data Validation & Configuration
 pydantic>=2.6.0,<3.0.0
 pydantic-settings>=2.2.0,<3.0.0
 email-validator>=2.1.0
+PyYAML>=6.0.1
 
 # Database & ORM
 SQLAlchemy>=2.0.28,<3.0.0
@@ -32,10 +33,11 @@ httpx>=0.27.0
 requests>=2.31.0
 click>=8.1.7
 
-# Resume Extraction & Document Processing
+# Resume Parsing, Extraction & Document Processing
 pypdf>=5.0.0
 python-docx>=1.1.0
+lxml>=5.0.0
 
-# Testing
+# Testing & Async Framework
 pytest>=8.0.0
 anyio>=4.3.0
