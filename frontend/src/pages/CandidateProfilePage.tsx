@@ -150,14 +150,46 @@ export const CandidateProfilePage: React.FC<CandidateProfilePageProps> = ({
     fetchTemplates();
   }, [candidateId]);
 
-  const handleDownloadCV = (filename?: string) => {
-    const url = `/api/v1/candidates/${candidateId}/cv/download`;
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = filename || 'Candidate_Resume.pdf';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
+  const handleDownloadCV = async (filename?: string) => {
+    try {
+      const res = await fetch(`/api/v1/candidates/${candidateId}/cv/download`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (!res.ok) {
+        // Fallback to latest document url if present
+        if (candidate?.latest_document?.file_url) {
+          const docRes = await fetch(candidate.latest_document.file_url, {
+            headers: { Authorization: `Bearer ${token}` }
+          });
+          if (docRes.ok) {
+            const blob = await docRes.blob();
+            const blobUrl = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = blobUrl;
+            a.download = filename || candidate.latest_document.file_name || `${candidate.first_name}_${candidate.last_name}_Resume.pdf`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            window.URL.revokeObjectURL(blobUrl);
+            return;
+          }
+        }
+        alert('Could not download candidate CV.');
+        return;
+      }
+      const blob = await res.blob();
+      const blobUrl = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = blobUrl;
+      a.download = filename || candidate?.latest_document?.file_name || `${candidate?.first_name || 'Candidate'}_Resume.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(blobUrl);
+    } catch (err) {
+      console.error('Download error:', err);
+      alert('Encountered an error downloading CV.');
+    }
   };
 
   const handleGrantConsent = async () => {

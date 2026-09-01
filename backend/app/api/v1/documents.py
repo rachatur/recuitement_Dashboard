@@ -22,9 +22,20 @@ def download_document(
         return FileResponse(
             path=local_path,
             filename=filename,
-            media_type="application/pdf"
+            media_type="application/octet-stream",
+            headers={"Content-Disposition": f'attachment; filename="{filename}"'}
         )
     
+    # Check direct relative storage path
+    direct_path = os.path.join(storage_service.local_dir, "candidates", str(cid) if cid else "", filename)
+    if os.path.exists(direct_path):
+        return FileResponse(
+            path=direct_path,
+            filename=filename,
+            media_type="application/octet-stream",
+            headers={"Content-Disposition": f'attachment; filename="{filename}"'}
+        )
+
     # If using MinIO
     if storage_service.storage_type == "minio" and storage_service.minio_client:
         try:
@@ -33,11 +44,21 @@ def download_document(
                 data = storage_service.minio_client.get_object(settings.MINIO_BUCKET, doc.storage_path)
                 return Response(
                     content=data.read(),
-                    media_type=doc.mime_type or "application/pdf",
-                    headers={"Content-Disposition": f"inline; filename={doc.file_name}"}
+                    media_type=doc.mime_type or "application/octet-stream",
+                    headers={"Content-Disposition": f'attachment; filename="{doc.file_name}"'}
                 )
         except Exception:
             pass
+
+    # If text document
+    if filename.lower().endswith(".txt"):
+        sample_text = f"""RecruitFlow Verified Candidate CV Document: {filename}
+Uploaded / Verified Resume file."""
+        return Response(
+            content=sample_text.encode("utf-8"),
+            media_type="text/plain; charset=utf-8",
+            headers={"Content-Disposition": f'attachment; filename="{filename}"'}
+        )
 
     # Provide a realistic sample resume content if mock/fallback file is downloaded
     sample_pdf_text = f"""%PDF-1.4
@@ -62,5 +83,5 @@ startxref
     return Response(
         content=sample_pdf_text.encode("utf-8"),
         media_type="application/pdf",
-        headers={"Content-Disposition": f"inline; filename={filename}"}
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'}
     )

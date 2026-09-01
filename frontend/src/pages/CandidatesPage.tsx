@@ -519,14 +519,28 @@ export const CandidatesPage: React.FC<CandidatesPageProps> = ({ onViewCandidateP
   };
 
   // Download CV retaining original name
-  const handleDownloadCV = (candId: string, filename?: string) => {
-    const url = `/api/v1/candidates/${candId}/cv/download`;
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = filename || 'Candidate_Resume.pdf';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
+  const handleDownloadCV = async (candId: string, filename?: string) => {
+    try {
+      const res = await apiFetch(`/api/v1/candidates/${candId}/cv/download`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (!res.ok) {
+        alert('Could not download candidate CV.');
+        return;
+      }
+      const blob = await res.blob();
+      const blobUrl = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = blobUrl;
+      a.download = filename || 'Candidate_Resume.pdf';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(blobUrl);
+    } catch (err) {
+      console.error('Download CV error:', err);
+      alert('Encountered an error downloading CV.');
+    }
   };
 
   // Single Candidate Deletion Handler
