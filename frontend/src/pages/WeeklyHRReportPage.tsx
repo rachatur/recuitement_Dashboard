@@ -7,7 +7,7 @@ import {
   Users, Send, CheckCircle2, XCircle, Clock, CalendarDays,
   Award, UserCheck, PauseCircle, TrendingUp, BarChart3,
   Layers, ChevronLeft, ChevronRight, Briefcase, Building,
-  ArrowUpRight, PieChart, Sparkles
+  ArrowUpRight, PieChart, Sparkles, Check
 } from 'lucide-react';
 
 interface WeeklyHRReportPageProps {
@@ -17,7 +17,7 @@ interface WeeklyHRReportPageProps {
 export const WeeklyHRReportPage: React.FC<WeeklyHRReportPageProps> = ({
   onViewCandidateProfile
 }) => {
-  const { token, user } = useAuth();
+  const { token } = useAuth();
   const [report, setReport] = useState<WeeklyHRReportResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -79,21 +79,21 @@ export const WeeklyHRReportPage: React.FC<WeeklyHRReportPageProps> = ({
   return (
     <div className="space-y-6 pb-12 print:p-0 print:m-0">
       {/* Top Banner & Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-gray-200 dark:border-gray-800 pb-5">
-        <div>
-          <div className="flex items-center gap-2">
-            <div className="p-2 bg-gradient-to-tr from-blue-600 to-indigo-600 text-white rounded-xl shadow-md shadow-blue-500/20">
-              <BarChart3 className="w-6 h-6" />
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 bg-slate-900/60 p-5 rounded-2xl border border-slate-800/80 backdrop-blur-sm shadow-xl">
+        <div className="space-y-1">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-600 via-indigo-600 to-cyan-500 flex items-center justify-center shadow-lg shadow-blue-500/20">
+              <BarChart3 className="w-5 h-5 text-white" />
             </div>
             <div>
-              <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                Weekly HR Report
-                <span className="text-xs px-2.5 py-0.5 rounded-full font-medium bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
-                  {report?.week_label || 'Recruitment Analytics'}
+              <h1 className="text-xl font-extrabold text-white tracking-tight flex items-center gap-2">
+                Weekly HR Recruitment Report
+                <span className="px-2.5 py-0.5 text-[10px] font-bold rounded-full bg-blue-500/20 text-blue-300 border border-blue-500/40">
+                  {report?.week_label || 'Weekly Analytics'}
                 </span>
               </h1>
-              <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
-                Weekly recruitment velocity, candidate progression, interview throughput, and hiring outcomes.
+              <p className="text-xs text-slate-400">
+                Track weekly sourcing, submissions, interviews, selection rates, and onboarding velocity.
               </p>
             </div>
           </div>
@@ -103,15 +103,16 @@ export const WeeklyHRReportPage: React.FC<WeeklyHRReportPageProps> = ({
           <button
             onClick={() => fetchWeeklyReport()}
             disabled={loading}
-            className="p-2.5 border border-gray-300 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl text-gray-700 dark:text-gray-300 transition-colors shadow-sm"
+            className="flex items-center gap-1.5 px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-semibold border border-slate-700 transition disabled:opacity-50"
             title="Refresh Data"
           >
-            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+            <RefreshCw className={`w-3.5 h-3.5 text-blue-400 ${loading ? 'animate-spin' : ''}`} />
+            <span>{loading ? 'Refreshing...' : 'Refresh'}</span>
           </button>
 
           <button
             onClick={handlePrintReport}
-            className="flex items-center gap-2 px-4 py-2.5 bg-gray-900 hover:bg-gray-800 dark:bg-gray-800 dark:hover:bg-gray-700 text-white rounded-xl text-sm font-semibold shadow-sm transition-all"
+            className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white rounded-xl text-xs font-bold shadow-lg shadow-blue-600/20 transition"
           >
             <Printer className="w-4 h-4" />
             <span>Print / Export PDF</span>
@@ -120,69 +121,69 @@ export const WeeklyHRReportPage: React.FC<WeeklyHRReportPageProps> = ({
       </div>
 
       {/* Week Selector Toolbar */}
-      <div className="bg-white dark:bg-gray-900 rounded-2xl p-4 border border-gray-200/80 dark:border-gray-800 shadow-sm print:hidden">
+      <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-4 shadow-lg print:hidden">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
           {/* Quick Week Select Buttons */}
           <div className="flex flex-wrap items-center gap-2">
             <button
               onClick={() => { setUseCustomRange(false); setWeekOffset(0); }}
-              className={`px-3.5 py-2 rounded-xl text-sm font-medium transition-all ${
+              className={`px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 ${
                 !useCustomRange && weekOffset === 0
-                  ? 'bg-blue-600 text-white shadow-md shadow-blue-500/20'
-                  : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
+                  ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md shadow-blue-500/20 border border-blue-400/40'
+                  : 'bg-slate-950 text-slate-300 border border-slate-800 hover:bg-slate-800 hover:text-white'
               }`}
             >
               This Week
             </button>
             <button
               onClick={() => { setUseCustomRange(false); setWeekOffset(-1); }}
-              className={`px-3.5 py-2 rounded-xl text-sm font-medium transition-all ${
+              className={`px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 ${
                 !useCustomRange && weekOffset === -1
-                  ? 'bg-blue-600 text-white shadow-md shadow-blue-500/20'
-                  : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
+                  ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md shadow-blue-500/20 border border-blue-400/40'
+                  : 'bg-slate-950 text-slate-300 border border-slate-800 hover:bg-slate-800 hover:text-white'
               }`}
             >
               Last Week
             </button>
             <button
               onClick={() => { setUseCustomRange(false); setWeekOffset(-2); }}
-              className={`px-3.5 py-2 rounded-xl text-sm font-medium transition-all ${
+              className={`px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 ${
                 !useCustomRange && weekOffset === -2
-                  ? 'bg-blue-600 text-white shadow-md shadow-blue-500/20'
-                  : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
+                  ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md shadow-blue-500/20 border border-blue-400/40'
+                  : 'bg-slate-950 text-slate-300 border border-slate-800 hover:bg-slate-800 hover:text-white'
               }`}
             >
               2 Weeks Ago
             </button>
             <button
               onClick={() => { setUseCustomRange(false); setWeekOffset(-3); }}
-              className={`px-3.5 py-2 rounded-xl text-sm font-medium transition-all ${
+              className={`px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 ${
                 !useCustomRange && weekOffset === -3
-                  ? 'bg-blue-600 text-white shadow-md shadow-blue-500/20'
-                  : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
+                  ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md shadow-blue-500/20 border border-blue-400/40'
+                  : 'bg-slate-950 text-slate-300 border border-slate-800 hover:bg-slate-800 hover:text-white'
               }`}
             >
               3 Weeks Ago
             </button>
 
             {/* Stepper Navigation */}
-            <div className="flex items-center ml-2 border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden">
+            <div className="flex items-center ml-2 border border-slate-800 rounded-xl overflow-hidden bg-slate-950">
               <button
                 onClick={() => { setUseCustomRange(false); setWeekOffset(prev => prev - 1); }}
-                className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-400 transition-colors"
+                className="p-2 hover:bg-slate-800 text-slate-400 hover:text-white transition-colors"
                 title="Previous Week"
               >
                 <ChevronLeft className="w-4 h-4" />
               </button>
-              <span className="px-3 text-xs font-semibold text-gray-600 dark:text-gray-400 border-x border-gray-200 dark:border-gray-700 py-2 bg-gray-50 dark:bg-gray-800/50">
+              <span className="px-3 text-xs font-semibold text-slate-300 border-x border-slate-800 py-1.5 bg-slate-900/80">
                 {!useCustomRange
-                  ? (weekOffset === 0 ? 'Current Week' : weekOffset === -1 ? 'Last Week' : `${Math.abs(weekOffset)}w Ago`)
-                  : 'Custom Range'}
+                  ? (weekOffset === 0 ? 'Current' : weekOffset === -1 ? 'Last Wk' : `${Math.abs(weekOffset)}w Ago`)
+                  : 'Custom'}
               </span>
               <button
                 onClick={() => { setUseCustomRange(false); setWeekOffset(prev => Math.min(0, prev + 1)); }}
                 disabled={weekOffset >= 0}
-                className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-400 disabled:opacity-30 transition-colors"
+                className="p-2 hover:bg-slate-800 text-slate-400 hover:text-white disabled:opacity-30 transition-colors"
                 title="Next Week"
               >
                 <ChevronRight className="w-4 h-4" />
@@ -192,26 +193,26 @@ export const WeeklyHRReportPage: React.FC<WeeklyHRReportPageProps> = ({
 
           {/* Custom Date Range Picker */}
           <form onSubmit={handleApplyCustomDate} className="flex flex-wrap items-center gap-2.5">
-            <div className="flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400 font-medium">
-              <Calendar className="w-3.5 h-3.5" />
+            <div className="flex items-center gap-1.5 text-xs text-slate-400 font-medium">
+              <Calendar className="w-3.5 h-3.5 text-blue-400" />
               <span>Custom Date:</span>
             </div>
             <input
               type="date"
               value={startDate}
               onChange={(e) => setStartDate(e.target.value)}
-              className="px-3 py-1.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-xs text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="px-3 py-1.5 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-200 focus:outline-none focus:border-blue-500"
             />
-            <span className="text-gray-400 text-xs font-semibold">to</span>
+            <span className="text-slate-500 text-xs font-semibold">to</span>
             <input
               type="date"
               value={endDate}
               onChange={(e) => setEndDate(e.target.value)}
-              className="px-3 py-1.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-xs text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="px-3 py-1.5 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-200 focus:outline-none focus:border-blue-500"
             />
             <button
               type="submit"
-              className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-semibold shadow-sm transition-all"
+              className="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold shadow transition"
             >
               Apply
             </button>
@@ -221,17 +222,17 @@ export const WeeklyHRReportPage: React.FC<WeeklyHRReportPageProps> = ({
 
       {/* Error Alert */}
       {error && (
-        <div className="p-4 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 rounded-2xl flex items-center justify-between gap-4">
+        <div className="p-4 bg-rose-950/40 border border-rose-800/80 rounded-2xl flex items-center justify-between gap-4 text-xs">
           <div className="flex items-center gap-3">
-            <XCircle className="w-5 h-5 text-rose-600 shrink-0" />
+            <XCircle className="w-5 h-5 text-rose-400 shrink-0" />
             <div>
-              <p className="text-xs font-bold text-rose-900 dark:text-rose-200">Failed to load Weekly Report</p>
-              <p className="text-xs text-rose-700 dark:text-rose-300">{error}</p>
+              <p className="font-bold text-rose-200">Failed to load Weekly Report</p>
+              <p className="text-rose-400">{error}</p>
             </div>
           </div>
           <button
             onClick={() => fetchWeeklyReport()}
-            className="px-3 py-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold shrink-0 shadow-sm"
+            className="px-3 py-1.5 bg-rose-600 hover:bg-rose-500 text-white rounded-xl font-bold shrink-0 shadow-sm"
           >
             Retry
           </button>
@@ -240,194 +241,185 @@ export const WeeklyHRReportPage: React.FC<WeeklyHRReportPageProps> = ({
 
       {/* Loading state indicator */}
       {loading && !report && (
-        <div className="py-24 text-center bg-white dark:bg-gray-900 rounded-2xl border border-gray-200/80 dark:border-gray-800 shadow-sm">
-          <RefreshCw className="w-8 h-8 text-blue-600 animate-spin mx-auto mb-3" />
-          <p className="text-sm font-bold text-gray-800 dark:text-gray-200">Loading Weekly HR Recruitment Analytics...</p>
-          <p className="text-xs text-gray-500 mt-1">Aggregating sourcing, submissions, interviews, and offers for this period.</p>
+        <div className="py-24 text-center bg-slate-900/60 rounded-2xl border border-slate-800 shadow-xl">
+          <RefreshCw className="w-8 h-8 text-blue-400 animate-spin mx-auto mb-3" />
+          <p className="text-sm font-bold text-slate-200">Loading Weekly HR Recruitment Analytics...</p>
+          <p className="text-xs text-slate-500 mt-1">Aggregating sourcing, submissions, interviews, and offers for this period.</p>
         </div>
       )}
 
       {/* 9 Highlight Metric KPI Cards */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3.5">
         {/* 1. Total Candidates */}
-        <div className="bg-white dark:bg-gray-900 p-4 rounded-2xl border border-blue-200/60 dark:border-blue-900/30 shadow-sm relative overflow-hidden group hover:border-blue-400 transition-all">
-          <div className="absolute top-0 right-0 w-16 h-16 bg-blue-500/10 rounded-bl-full pointer-events-none transition-all group-hover:scale-110" />
+        <div className="bg-slate-900/90 p-4 rounded-2xl border border-blue-500/30 hover:border-blue-500/60 shadow-lg relative overflow-hidden group transition-all">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-semibold uppercase tracking-wider text-blue-600 dark:text-blue-400">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-blue-400">
               Total Candidates
             </span>
-            <div className="p-1.5 bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 rounded-lg">
+            <div className="p-1.5 bg-blue-500/20 text-blue-300 rounded-lg">
               <Users className="w-4 h-4" />
             </div>
           </div>
-          <div className="text-2xl font-bold text-gray-900 dark:text-white">
+          <div className="text-2xl font-black text-white">
             {report?.total_candidates ?? 0}
           </div>
-          <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-1">Sourced this period</p>
+          <p className="text-[10px] text-slate-400 mt-1">Sourced this period</p>
         </div>
 
         {/* 2. CVs Submitted */}
-        <div className="bg-white dark:bg-gray-900 p-4 rounded-2xl border border-indigo-200/60 dark:border-indigo-900/30 shadow-sm relative overflow-hidden group hover:border-indigo-400 transition-all">
-          <div className="absolute top-0 right-0 w-16 h-16 bg-indigo-500/10 rounded-bl-full pointer-events-none transition-all group-hover:scale-110" />
+        <div className="bg-slate-900/90 p-4 rounded-2xl border border-indigo-500/30 hover:border-indigo-500/60 shadow-lg relative overflow-hidden group transition-all">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-semibold uppercase tracking-wider text-indigo-600 dark:text-indigo-400">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-indigo-400">
               CVs Submitted
             </span>
-            <div className="p-1.5 bg-indigo-100 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400 rounded-lg">
+            <div className="p-1.5 bg-indigo-500/20 text-indigo-300 rounded-lg">
               <Send className="w-4 h-4" />
             </div>
           </div>
-          <div className="text-2xl font-bold text-gray-900 dark:text-white">
+          <div className="text-2xl font-black text-white">
             {report?.cvs_submitted ?? 0}
           </div>
-          <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-1">Sent to client roles</p>
+          <p className="text-[10px] text-slate-400 mt-1">Sent to client roles</p>
         </div>
 
         {/* 3. Candidates Selected */}
-        <div className="bg-white dark:bg-gray-900 p-4 rounded-2xl border border-emerald-200/60 dark:border-emerald-900/30 shadow-sm relative overflow-hidden group hover:border-emerald-400 transition-all">
-          <div className="absolute top-0 right-0 w-16 h-16 bg-emerald-500/10 rounded-bl-full pointer-events-none transition-all group-hover:scale-110" />
+        <div className="bg-slate-900/90 p-4 rounded-2xl border border-emerald-500/30 hover:border-emerald-500/60 shadow-lg relative overflow-hidden group transition-all">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-semibold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-400">
               Selected
             </span>
-            <div className="p-1.5 bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400 rounded-lg">
+            <div className="p-1.5 bg-emerald-500/20 text-emerald-300 rounded-lg">
               <CheckCircle2 className="w-4 h-4" />
             </div>
           </div>
-          <div className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">
+          <div className="text-2xl font-black text-emerald-400">
             {report?.candidates_selected ?? 0}
           </div>
-          <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-1">Shortlisted / Chosen</p>
+          <p className="text-[10px] text-slate-400 mt-1">Shortlisted / Chosen</p>
         </div>
 
         {/* 4. Candidates Rejected */}
-        <div className="bg-white dark:bg-gray-900 p-4 rounded-2xl border border-rose-200/60 dark:border-rose-900/30 shadow-sm relative overflow-hidden group hover:border-rose-400 transition-all">
-          <div className="absolute top-0 right-0 w-16 h-16 bg-rose-500/10 rounded-bl-full pointer-events-none transition-all group-hover:scale-110" />
+        <div className="bg-slate-900/90 p-4 rounded-2xl border border-rose-500/30 hover:border-rose-500/60 shadow-lg relative overflow-hidden group transition-all">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-semibold uppercase tracking-wider text-rose-600 dark:text-rose-400">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-rose-400">
               Rejected
             </span>
-            <div className="p-1.5 bg-rose-100 dark:bg-rose-900/40 text-rose-600 dark:text-rose-400 rounded-lg">
+            <div className="p-1.5 bg-rose-500/20 text-rose-300 rounded-lg">
               <XCircle className="w-4 h-4" />
             </div>
           </div>
-          <div className="text-2xl font-bold text-rose-600 dark:text-rose-400">
+          <div className="text-2xl font-black text-rose-400">
             {report?.candidates_rejected ?? 0}
           </div>
-          <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-1">Not shortlisted</p>
+          <p className="text-[10px] text-slate-400 mt-1">Not shortlisted</p>
         </div>
 
         {/* 5. Interviews Scheduled */}
-        <div className="bg-white dark:bg-gray-900 p-4 rounded-2xl border border-violet-200/60 dark:border-violet-900/30 shadow-sm relative overflow-hidden group hover:border-violet-400 transition-all">
-          <div className="absolute top-0 right-0 w-16 h-16 bg-violet-500/10 rounded-bl-full pointer-events-none transition-all group-hover:scale-110" />
+        <div className="bg-slate-900/90 p-4 rounded-2xl border border-violet-500/30 hover:border-violet-500/60 shadow-lg relative overflow-hidden group transition-all">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-semibold uppercase tracking-wider text-violet-600 dark:text-violet-400">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-violet-400">
               Scheduled
             </span>
-            <div className="p-1.5 bg-violet-100 dark:bg-violet-900/40 text-violet-600 dark:text-violet-400 rounded-lg">
+            <div className="p-1.5 bg-violet-500/20 text-violet-300 rounded-lg">
               <CalendarDays className="w-4 h-4" />
             </div>
           </div>
-          <div className="text-2xl font-bold text-gray-900 dark:text-white">
+          <div className="text-2xl font-black text-white">
             {report?.interviews_scheduled ?? 0}
           </div>
-          <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-1">Interviews lined up</p>
+          <p className="text-[10px] text-slate-400 mt-1">Interviews lined up</p>
         </div>
 
         {/* 6. Interviews Completed */}
-        <div className="bg-white dark:bg-gray-900 p-4 rounded-2xl border border-teal-200/60 dark:border-teal-900/30 shadow-sm relative overflow-hidden group hover:border-teal-400 transition-all">
-          <div className="absolute top-0 right-0 w-16 h-16 bg-teal-500/10 rounded-bl-full pointer-events-none transition-all group-hover:scale-110" />
+        <div className="bg-slate-900/90 p-4 rounded-2xl border border-teal-500/30 hover:border-teal-500/60 shadow-lg relative overflow-hidden group transition-all">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-semibold uppercase tracking-wider text-teal-600 dark:text-teal-400">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-teal-400">
               Completed
             </span>
-            <div className="p-1.5 bg-teal-100 dark:bg-teal-900/40 text-teal-600 dark:text-teal-400 rounded-lg">
+            <div className="p-1.5 bg-teal-500/20 text-teal-300 rounded-lg">
               <Clock className="w-4 h-4" />
             </div>
           </div>
-          <div className="text-2xl font-bold text-gray-900 dark:text-white">
+          <div className="text-2xl font-black text-teal-400">
             {report?.interviews_completed ?? 0}
           </div>
-          <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-1">Rounds finished</p>
+          <p className="text-[10px] text-slate-400 mt-1">Rounds finished</p>
         </div>
 
         {/* 7. Candidates Hired */}
-        <div className="bg-white dark:bg-gray-900 p-4 rounded-2xl border border-green-200/60 dark:border-green-900/30 shadow-sm relative overflow-hidden group hover:border-green-400 transition-all">
-          <div className="absolute top-0 right-0 w-16 h-16 bg-green-500/10 rounded-bl-full pointer-events-none transition-all group-hover:scale-110" />
+        <div className="bg-slate-900/90 p-4 rounded-2xl border border-green-500/30 hover:border-green-500/60 shadow-lg relative overflow-hidden group transition-all">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-semibold uppercase tracking-wider text-green-600 dark:text-green-400">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-green-400">
               Hired
             </span>
-            <div className="p-1.5 bg-green-100 dark:bg-green-900/40 text-green-600 dark:text-green-400 rounded-lg">
+            <div className="p-1.5 bg-green-500/20 text-green-300 rounded-lg">
               <Award className="w-4 h-4" />
             </div>
           </div>
-          <div className="text-2xl font-bold text-green-600 dark:text-green-400">
+          <div className="text-2xl font-black text-green-400">
             {report?.candidates_hired ?? 0}
           </div>
-          <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-1">Offers accepted</p>
+          <p className="text-[10px] text-slate-400 mt-1">Offers accepted</p>
         </div>
 
         {/* 8. Candidates On Hold */}
-        <div className="bg-white dark:bg-gray-900 p-4 rounded-2xl border border-amber-200/60 dark:border-amber-900/30 shadow-sm relative overflow-hidden group hover:border-amber-400 transition-all">
-          <div className="absolute top-0 right-0 w-16 h-16 bg-amber-500/10 rounded-bl-full pointer-events-none transition-all group-hover:scale-110" />
+        <div className="bg-slate-900/90 p-4 rounded-2xl border border-amber-500/30 hover:border-amber-500/60 shadow-lg relative overflow-hidden group transition-all">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-semibold uppercase tracking-wider text-amber-600 dark:text-amber-400">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-amber-400">
               On Hold
             </span>
-            <div className="p-1.5 bg-amber-100 dark:bg-amber-900/40 text-amber-600 dark:text-amber-400 rounded-lg">
+            <div className="p-1.5 bg-amber-500/20 text-amber-300 rounded-lg">
               <PauseCircle className="w-4 h-4" />
             </div>
           </div>
-          <div className="text-2xl font-bold text-amber-600 dark:text-amber-400">
+          <div className="text-2xl font-black text-amber-400">
             {report?.candidates_on_hold ?? 0}
           </div>
-          <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-1">Pending client decision</p>
+          <p className="text-[10px] text-slate-400 mt-1">Pending client decision</p>
         </div>
 
         {/* 9. Candidates Joined */}
-        <div className="bg-white dark:bg-gray-900 p-4 rounded-2xl border border-cyan-200/60 dark:border-cyan-900/30 shadow-sm relative overflow-hidden col-span-2 sm:col-span-1 group hover:border-cyan-400 transition-all">
-          <div className="absolute top-0 right-0 w-16 h-16 bg-cyan-500/10 rounded-bl-full pointer-events-none transition-all group-hover:scale-110" />
+        <div className="bg-slate-900/90 p-4 rounded-2xl border border-cyan-500/30 hover:border-cyan-500/60 shadow-lg relative overflow-hidden col-span-2 sm:col-span-1 group transition-all">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-semibold uppercase tracking-wider text-cyan-600 dark:text-cyan-400">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-cyan-400">
               Joined
             </span>
-            <div className="p-1.5 bg-cyan-100 dark:bg-cyan-900/40 text-cyan-600 dark:text-cyan-400 rounded-lg">
+            <div className="p-1.5 bg-cyan-500/20 text-cyan-300 rounded-lg">
               <UserCheck className="w-4 h-4" />
             </div>
           </div>
-          <div className="text-2xl font-bold text-cyan-600 dark:text-cyan-400">
+          <div className="text-2xl font-black text-cyan-400">
             {report?.candidates_joined ?? 0}
           </div>
-          <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-1">Onboarded employees</p>
+          <p className="text-[10px] text-slate-400 mt-1">Onboarded employees</p>
         </div>
       </div>
 
       {/* Visual Charts & Funnel Section */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Day-by-Day Activity Chart */}
-        <div className="lg:col-span-2 bg-white dark:bg-gray-900 p-5 rounded-2xl border border-gray-200/80 dark:border-gray-800 shadow-sm">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-gray-100 dark:border-gray-800 gap-2">
+        <div className="lg:col-span-2 bg-slate-900/90 p-5 rounded-2xl border border-slate-800 shadow-lg">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-slate-800 gap-2">
             <div>
-              <h3 className="font-bold text-base text-gray-900 dark:text-white flex items-center gap-2">
-                <TrendingUp className="w-5 h-5 text-blue-600" />
+              <h3 className="font-bold text-sm text-white flex items-center gap-2">
+                <TrendingUp className="w-4 h-4 text-blue-400" />
                 Day-by-Day Weekly Activity Distribution
               </h3>
-              <p className="text-xs text-gray-500 dark:text-gray-400">
+              <p className="text-xs text-slate-400">
                 Daily breakdown of candidates sourced, CVs submitted, interviews, and selections.
               </p>
             </div>
-            <div className="flex items-center gap-2 text-xs">
-              <span className="flex items-center gap-1 text-gray-600 dark:text-gray-400">
+            <div className="flex items-center gap-2.5 text-xs">
+              <span className="flex items-center gap-1 text-slate-300">
                 <span className="w-2.5 h-2.5 rounded-full bg-blue-500" /> Sourced
               </span>
-              <span className="flex items-center gap-1 text-gray-600 dark:text-gray-400">
+              <span className="flex items-center gap-1 text-slate-300">
                 <span className="w-2.5 h-2.5 rounded-full bg-indigo-500" /> Submissions
               </span>
-              <span className="flex items-center gap-1 text-gray-600 dark:text-gray-400">
+              <span className="flex items-center gap-1 text-slate-300">
                 <span className="w-2.5 h-2.5 rounded-full bg-violet-500" /> Interviews
               </span>
-              <span className="flex items-center gap-1 text-gray-600 dark:text-gray-400">
+              <span className="flex items-center gap-1 text-slate-300">
                 <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" /> Selected
               </span>
             </div>
@@ -443,36 +435,36 @@ export const WeeklyHRReportPage: React.FC<WeeklyHRReportPageProps> = ({
                   );
                   return (
                     <div key={idx} className="flex flex-col items-center">
-                      <div className="h-44 w-full bg-gray-50 dark:bg-gray-800/40 rounded-xl p-1.5 flex items-end justify-center gap-1 relative group">
+                      <div className="h-44 w-full bg-slate-950/80 border border-slate-800 rounded-xl p-1.5 flex items-end justify-center gap-1 relative group">
                         {/* Candidates added bar */}
                         <div
                           style={{ height: `${Math.min(100, (day.candidates_added / maxVal) * 100)}%` }}
-                          className="w-2 bg-blue-500 rounded-t-sm transition-all group-hover:brightness-110 min-h-[4px]"
+                          className="w-2 bg-blue-500 rounded-t-sm transition-all group-hover:brightness-125 min-h-[4px]"
                           title={`Sourced: ${day.candidates_added}`}
                         />
                         {/* Submissions bar */}
                         <div
                           style={{ height: `${Math.min(100, (day.cvs_submitted / maxVal) * 100)}%` }}
-                          className="w-2 bg-indigo-500 rounded-t-sm transition-all group-hover:brightness-110 min-h-[4px]"
+                          className="w-2 bg-indigo-500 rounded-t-sm transition-all group-hover:brightness-125 min-h-[4px]"
                           title={`Submissions: ${day.cvs_submitted}`}
                         />
                         {/* Interviews scheduled bar */}
                         <div
                           style={{ height: `${Math.min(100, (day.interviews_scheduled / maxVal) * 100)}%` }}
-                          className="w-2 bg-violet-500 rounded-t-sm transition-all group-hover:brightness-110 min-h-[4px]"
+                          className="w-2 bg-violet-500 rounded-t-sm transition-all group-hover:brightness-125 min-h-[4px]"
                           title={`Interviews: ${day.interviews_scheduled}`}
                         />
                         {/* Selections bar */}
                         <div
                           style={{ height: `${Math.min(100, (day.selected / maxVal) * 100)}%` }}
-                          className="w-2 bg-emerald-500 rounded-t-sm transition-all group-hover:brightness-110 min-h-[4px]"
+                          className="w-2 bg-emerald-500 rounded-t-sm transition-all group-hover:brightness-125 min-h-[4px]"
                           title={`Selected: ${day.selected}`}
                         />
                       </div>
-                      <span className="text-[11px] font-semibold text-gray-700 dark:text-gray-300 mt-2">
+                      <span className="text-[11px] font-bold text-slate-200 mt-2">
                         {day.day_name.split(' ')[0]}
                       </span>
-                      <span className="text-[10px] text-gray-400">
+                      <span className="text-[10px] text-slate-400">
                         {day.day_name.split(' ')[1] || ''}
                       </span>
                     </div>
@@ -480,7 +472,7 @@ export const WeeklyHRReportPage: React.FC<WeeklyHRReportPageProps> = ({
                 })}
               </div>
             ) : (
-              <div className="h-44 flex items-center justify-center text-gray-400 text-sm">
+              <div className="h-44 flex items-center justify-center text-slate-500 text-xs">
                 No activity recorded for this period.
               </div>
             )}
@@ -488,14 +480,14 @@ export const WeeklyHRReportPage: React.FC<WeeklyHRReportPageProps> = ({
         </div>
 
         {/* Recruitment Pipeline Funnel */}
-        <div className="bg-white dark:bg-gray-900 p-5 rounded-2xl border border-gray-200/80 dark:border-gray-800 shadow-sm flex flex-col justify-between">
+        <div className="bg-slate-900/90 p-5 rounded-2xl border border-slate-800 shadow-lg flex flex-col justify-between">
           <div>
-            <div className="pb-4 border-b border-gray-100 dark:border-gray-800">
-              <h3 className="font-bold text-base text-gray-900 dark:text-white flex items-center gap-2">
-                <Layers className="w-5 h-5 text-indigo-600" />
+            <div className="pb-4 border-b border-slate-800">
+              <h3 className="font-bold text-sm text-white flex items-center gap-2">
+                <Layers className="w-4 h-4 text-indigo-400" />
                 Pipeline Conversion Funnel
               </h3>
-              <p className="text-xs text-gray-500 dark:text-gray-400">
+              <p className="text-xs text-slate-400">
                 Conversion rate through each recruitment milestone.
               </p>
             </div>
@@ -503,27 +495,27 @@ export const WeeklyHRReportPage: React.FC<WeeklyHRReportPageProps> = ({
             <div className="space-y-3.5 pt-4">
               {report?.pipeline_funnel?.map((step, idx) => {
                 const colors = [
-                  'bg-blue-500 text-blue-600',
-                  'bg-indigo-500 text-indigo-600',
-                  'bg-violet-500 text-violet-600',
-                  'bg-emerald-500 text-emerald-600',
-                  'bg-green-500 text-green-600',
-                  'bg-cyan-500 text-cyan-600'
+                  'bg-blue-500',
+                  'bg-indigo-500',
+                  'bg-violet-500',
+                  'bg-emerald-500',
+                  'bg-green-500',
+                  'bg-cyan-500'
                 ];
                 const color = colors[idx % colors.length];
 
                 return (
                   <div key={idx}>
                     <div className="flex justify-between text-xs font-semibold mb-1">
-                      <span className="text-gray-700 dark:text-gray-300">{step.stage}</span>
-                      <span className="text-gray-900 dark:text-white font-bold">
-                        {step.count} <span className="text-gray-400 font-normal text-[11px]">({step.conversion_rate}%)</span>
+                      <span className="text-slate-300">{step.stage}</span>
+                      <span className="text-white font-bold">
+                        {step.count} <span className="text-slate-400 font-normal text-[11px]">({step.conversion_rate}%)</span>
                       </span>
                     </div>
-                    <div className="w-full bg-gray-100 dark:bg-gray-800 h-2.5 rounded-full overflow-hidden">
+                    <div className="w-full bg-slate-950 h-2.5 rounded-full overflow-hidden border border-slate-800">
                       <div
                         style={{ width: `${Math.min(100, Math.max(6, step.conversion_rate))}%` }}
-                        className={`h-full ${color.split(' ')[0]} rounded-full transition-all duration-500`}
+                        className={`h-full ${color} rounded-full transition-all duration-500`}
                       />
                     </div>
                   </div>
@@ -532,11 +524,11 @@ export const WeeklyHRReportPage: React.FC<WeeklyHRReportPageProps> = ({
             </div>
           </div>
 
-          <div className="pt-4 border-t border-gray-100 dark:border-gray-800 mt-4">
-            <div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-xl border border-blue-100 dark:border-blue-900/30 flex items-center gap-3">
-              <Sparkles className="w-5 h-5 text-blue-600 dark:text-blue-400 shrink-0" />
-              <p className="text-xs text-blue-800 dark:text-blue-300">
-                <strong>Overall Conversion:</strong> {report?.total_candidates ? ((report.candidates_joined / report.total_candidates) * 100).toFixed(1) : 0}% candidate-to-join ratio this week.
+          <div className="pt-4 border-t border-slate-800 mt-4">
+            <div className="bg-blue-950/30 p-3 rounded-xl border border-blue-800/40 flex items-center gap-3">
+              <Sparkles className="w-5 h-5 text-blue-400 shrink-0" />
+              <p className="text-xs text-blue-300">
+                <strong>Weekly Throughput:</strong> {report?.total_candidates ? ((report.candidates_joined / report.total_candidates) * 100).toFixed(1) : 0}% candidate-to-join ratio this period.
               </p>
             </div>
           </div>
@@ -546,31 +538,31 @@ export const WeeklyHRReportPage: React.FC<WeeklyHRReportPageProps> = ({
       {/* Top Positions & Recent Submissions Section */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Top Demanded Job Titles */}
-        <div className="bg-white dark:bg-gray-900 p-5 rounded-2xl border border-gray-200/80 dark:border-gray-800 shadow-sm">
-          <h3 className="font-bold text-base text-gray-900 dark:text-white flex items-center gap-2 pb-3 border-b border-gray-100 dark:border-gray-800">
-            <Briefcase className="w-5 h-5 text-blue-600" />
+        <div className="bg-slate-900/90 p-5 rounded-2xl border border-slate-800 shadow-lg">
+          <h3 className="font-bold text-sm text-white flex items-center gap-2 pb-3 border-b border-slate-800">
+            <Briefcase className="w-4 h-4 text-blue-400" />
             Top Sourced Positions
           </h3>
 
-          <div className="space-y-3 pt-4">
+          <div className="space-y-2.5 pt-4">
             {report?.top_positions && report.top_positions.length > 0 ? (
               report.top_positions.map((pos, idx) => (
-                <div key={idx} className="flex items-center justify-between p-2.5 rounded-xl bg-gray-50 dark:bg-gray-800/50 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
+                <div key={idx} className="flex items-center justify-between p-2.5 rounded-xl bg-slate-950 border border-slate-800/80 hover:border-blue-500/40 transition-colors">
                   <div className="flex items-center gap-2.5">
-                    <span className="w-6 h-6 rounded-lg bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 font-bold text-xs flex items-center justify-center">
+                    <span className="w-6 h-6 rounded-lg bg-blue-500/20 text-blue-300 font-bold text-xs flex items-center justify-center">
                       {idx + 1}
                     </span>
-                    <span className="text-xs font-semibold text-gray-800 dark:text-gray-200 line-clamp-1">
+                    <span className="text-xs font-semibold text-slate-200 line-clamp-1">
                       {pos.position}
                     </span>
                   </div>
-                  <span className="text-xs px-2.5 py-1 rounded-full font-bold bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
+                  <span className="text-xs px-2.5 py-1 rounded-full font-bold bg-blue-500/10 text-blue-300 border border-blue-500/30">
                     {pos.count} candidates
                   </span>
                 </div>
               ))
             ) : (
-              <div className="text-center py-8 text-gray-400 text-xs">
+              <div className="text-center py-8 text-slate-500 text-xs">
                 No position data for this period.
               </div>
             )}
@@ -578,20 +570,20 @@ export const WeeklyHRReportPage: React.FC<WeeklyHRReportPageProps> = ({
         </div>
 
         {/* Weekly Submissions Log */}
-        <div className="lg:col-span-2 bg-white dark:bg-gray-900 p-5 rounded-2xl border border-gray-200/80 dark:border-gray-800 shadow-sm">
-          <div className="flex items-center justify-between pb-3 border-b border-gray-100 dark:border-gray-800">
-            <h3 className="font-bold text-base text-gray-900 dark:text-white flex items-center gap-2">
-              <Building className="w-5 h-5 text-indigo-600" />
+        <div className="lg:col-span-2 bg-slate-900/90 p-5 rounded-2xl border border-slate-800 shadow-lg">
+          <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+            <h3 className="font-bold text-sm text-white flex items-center gap-2">
+              <Building className="w-4 h-4 text-indigo-400" />
               Weekly Client Submissions & Outreaches
             </h3>
-            <span className="text-xs text-gray-500 dark:text-gray-400">
+            <span className="text-xs text-slate-400">
               Showing latest {report?.recent_submissions?.length || 0} submissions
             </span>
           </div>
 
           <div className="overflow-x-auto pt-3">
             <table className="w-full text-left text-xs">
-              <thead className="bg-gray-50 dark:bg-gray-800/60 text-gray-600 dark:text-gray-400 uppercase font-semibold">
+              <thead className="bg-slate-950 text-slate-400 uppercase font-semibold border-b border-slate-800">
                 <tr>
                   <th className="py-2.5 px-3 rounded-l-lg">Code</th>
                   <th className="py-2.5 px-3">Candidate</th>
@@ -601,43 +593,43 @@ export const WeeklyHRReportPage: React.FC<WeeklyHRReportPageProps> = ({
                   <th className="py-2.5 px-3 rounded-r-lg text-right">Date</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
+              <tbody className="divide-y divide-slate-800/60">
                 {report?.recent_submissions && report.recent_submissions.length > 0 ? (
                   report.recent_submissions.map((sub, idx) => (
-                    <tr key={idx} className="hover:bg-gray-50 dark:hover:bg-gray-800/40 transition-colors">
-                      <td className="py-3 px-3 font-mono font-bold text-blue-600 dark:text-blue-400">
+                    <tr key={idx} className="hover:bg-slate-800/40 transition-colors">
+                      <td className="py-3 px-3 font-mono font-bold text-blue-400">
                         {sub.submission_code}
                       </td>
-                      <td className="py-3 px-3 font-medium text-gray-900 dark:text-white">
+                      <td className="py-3 px-3 font-medium text-white">
                         {sub.candidate_name}
                       </td>
-                      <td className="py-3 px-3 text-gray-700 dark:text-gray-300">
+                      <td className="py-3 px-3 text-slate-300">
                         {sub.position}
                       </td>
-                      <td className="py-3 px-3 text-gray-600 dark:text-gray-400">
+                      <td className="py-3 px-3 text-slate-400">
                         {sub.client_name}
                       </td>
                       <td className="py-3 px-3">
-                        <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-semibold ${
+                        <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase border ${
                           sub.status === 'SELECTED' || sub.status === 'JOINED' || sub.status === 'OFFER'
-                            ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300'
+                            ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
                             : sub.status === 'REJECTED'
-                            ? 'bg-rose-100 dark:bg-rose-900/30 text-rose-700 dark:text-rose-300'
+                            ? 'bg-rose-500/20 text-rose-300 border-rose-500/40'
                             : sub.status === 'INTERVIEW' || sub.status === 'SHORTLISTED'
-                            ? 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300'
-                            : 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300'
+                            ? 'bg-indigo-500/20 text-indigo-300 border-indigo-500/40'
+                            : 'bg-blue-500/20 text-blue-300 border-blue-500/40'
                         }`}>
                           {sub.status}
                         </span>
                       </td>
-                      <td className="py-3 px-3 text-right text-gray-400">
+                      <td className="py-3 px-3 text-right text-slate-400">
                         {sub.date}
                       </td>
                     </tr>
                   ))
                 ) : (
                   <tr>
-                    <td colSpan={6} className="py-8 text-center text-gray-400 text-xs">
+                    <td colSpan={6} className="py-8 text-center text-slate-500 text-xs">
                       No submissions logged in this period.
                     </td>
                   </tr>
