@@ -326,7 +326,10 @@ class JobRequirement(Base):
     filled_count = Column(Integer, default=0)
     priority = Column(SQLEnum(PriorityEnum), default=PriorityEnum.MEDIUM)
     open_date = Column(DateTime, default=utc_now)
+    hold_date = Column(DateTime, nullable=True)
+    closed_date = Column(DateTime, nullable=True)
     target_closing_date = Column(DateTime, nullable=True)
+    status_updated_at = Column(DateTime, default=utc_now, nullable=True)
     assigned_recruiter_id = Column(String(36), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     status = Column(SQLEnum(RequirementStatusEnum), default=RequirementStatusEnum.OPEN, nullable=False)
     position_status = Column(SQLEnum(PositionStatusEnum), default=PositionStatusEnum.OPEN, nullable=False)
@@ -387,6 +390,7 @@ class Candidate(Base):
     current_designation = Column(String(255), nullable=True)
     current_ctc = Column(Float, nullable=True)
     expected_ctc = Column(Float, nullable=True)
+    employment_history = Column(JSON, default=list)  # List of past work experience items
     notice_period_days = Column(Integer, default=30)
     notice_period = Column(String(100), nullable=True)  # e.g. "Immediate", "15 Days", "30 Days"
     skills = Column(JSON, default=list)  # List of strings

@@ -182,7 +182,10 @@ export interface JobRequirement {
   filled_count: number;
   priority: Priority;
   open_date: string;
+  hold_date?: string | null;
+  closed_date?: string | null;
   target_closing_date?: string | null;
+  status_updated_at?: string | null;
   assigned_recruiter_id?: string | null;
   recruiter_name?: string | null;
   status: RequirementStatus;
@@ -236,6 +239,53 @@ export interface WhatsAppEligibilityInfo {
   reason?: string | null;
 }
 
+export interface EmploymentGapItem {
+  start_date: string;
+  end_date: string;
+  gap_months: number;
+  previous_company?: string | null;
+  next_company?: string | null;
+  gap_reason?: string | null;
+}
+
+export interface EmploymentHistoryItem {
+  id?: string | null;
+  company_name: string;
+  designation?: string | null;
+  start_date?: string | null;
+  end_date?: string | null;
+  duration_years?: number | null;
+  duration_months?: number | null;
+  is_current?: boolean;
+  location?: string | null;
+  description?: string | null;
+  reason_for_leaving?: string | null;
+}
+
+export interface JobStabilityMetrics {
+  total_experience_years: number;
+  companies_count: number;
+  average_tenure_years: number;
+  average_tenure_months: number;
+  job_changes_recent_years?: number;
+  job_changes_summary?: string;
+  summary_headline?: string;
+  stability_rating: 'HIGH_RETENTION' | 'STABLE' | 'MODERATE' | 'FREQUENT_CHANGER' | string;
+  stability_indicator?: 'LONG_TENURE_STABLE' | 'STANDARD_CAREER_GROWTH' | 'REVIEW_RECOMMENDED_SHORT_TENURE' | 'REVIEW_RECOMMENDED_EMPLOYMENT_GAP' | string;
+  stability_score: number;
+  stability_label: string;
+  hr_review_required?: boolean;
+  short_stints_count: number;
+  longest_tenure_years: number;
+  total_gaps_count?: number;
+  total_gap_months?: number;
+  employment_gaps?: EmploymentGapItem[];
+  factual_observations?: string[];
+  hr_evaluation_notes?: string | null;
+  retention_risk_level: 'LOW' | 'MEDIUM' | 'HIGH' | string;
+  risk_reasons: string[];
+}
+
 export interface Candidate {
   id: string;
   candidate_code: string;
@@ -252,6 +302,12 @@ export interface Candidate {
   current_designation?: string | null;
   current_ctc?: number | null;
   expected_ctc?: number | null;
+  employment_history?: EmploymentHistoryItem[];
+  stability_metrics?: JobStabilityMetrics;
+  companies_count?: number;
+  average_tenure_years?: number;
+  stability_rating?: string;
+  stability_label?: string;
   notice_period_days: number;
   notice_period?: string | null;
   skills: string[];
@@ -872,3 +928,117 @@ export interface DashboardSummary {
   recruiter_performance?: RecruiterPerformanceItem[];
   time_metrics?: TimeMetrics;
 }
+
+export interface ATSRecommendation {
+  category: 'critical' | 'improvement' | 'strength';
+  title: string;
+  description: string;
+}
+
+export interface ATSCandidateDetails {
+  first_name?: string;
+  last_name?: string;
+  full_name?: string;
+  email?: string;
+  phone?: string;
+  location?: string;
+  total_experience?: number;
+  current_company?: string;
+  current_designation?: string;
+  education?: string;
+  highest_qualification?: string;
+  skills?: string[];
+  linkedin_url?: string;
+  github_url?: string;
+  summary?: string;
+}
+
+export interface ATSAnalysisResult {
+  overall_score: number;
+  grade: string;
+  pass_probability: string;
+  summary: string;
+  file_name?: string;
+  file_size_formatted?: string;
+  candidate_details: ATSCandidateDetails;
+  sections_detected: Record<string, boolean>;
+  category_scores: {
+    contact_info: number;
+    sections: number;
+    content_impact: number;
+    skills_keywords: number;
+    formatting: number;
+  };
+  category_max_scores: {
+    contact_info: number;
+    sections: number;
+    content_impact: number;
+    skills_keywords: number;
+    formatting: number;
+  };
+  contact_info_check: {
+    name_detected?: boolean;
+    name_value?: string;
+    email_detected?: boolean;
+    email_value?: string;
+    phone_detected?: boolean;
+    phone_value?: string;
+    location_detected?: boolean;
+    location_value?: string;
+    links_detected?: boolean;
+    linkedin_url?: string;
+    github_url?: string;
+  };
+  formatting_check: {
+    file_format_compatibility?: string;
+    bullet_points_structure?: string;
+    text_extractability?: string;
+  };
+  skills_analysis: {
+    extracted_skills: string[];
+    skills_count: number;
+    matched_skills?: string[];
+    missing_skills?: string[];
+    skills_score: number;
+  };
+  content_metrics: {
+    word_count: number;
+    estimated_pages: number;
+    length_status: string;
+    action_verbs_count: number;
+    action_verbs_found: string[];
+    quantified_metrics_count: number;
+    quantified_metrics_samples: string[];
+    reading_time_minutes: number;
+  };
+  recommendations: ATSRecommendation[];
+  target_job?: {
+    requirement_id: string;
+    req_code: string;
+    job_title: string;
+    client_name: string;
+    required_skills: string[];
+    matched_skills: string[];
+    missing_skills: string[];
+    experience_fit: string;
+    match_percentage: number;
+  } | null;
+  temp_file_id?: string | null;
+}
+
+export interface AIAssistantMessage {
+  id: string;
+  role: 'user' | 'assistant';
+  content: string;
+  timestamp: string;
+  intent?: string;
+  suggested_prompts?: string[];
+  data?: any;
+}
+
+export interface AIAssistantCategory {
+  category: string;
+  icon: string;
+  prompts: string[];
+}
+

@@ -162,7 +162,10 @@ class RequirementBase(BaseModel):
     openings_count: int = 1
     priority: PriorityEnum = PriorityEnum.MEDIUM
     open_date: Optional[datetime] = None
+    hold_date: Optional[datetime] = None
+    closed_date: Optional[datetime] = None
     target_closing_date: Optional[datetime] = None
+    status_updated_at: Optional[datetime] = None
     assigned_recruiter_id: Optional[str] = None
     status: RequirementStatusEnum = RequirementStatusEnum.OPEN
     position_status: PositionStatusEnum = PositionStatusEnum.OPEN
@@ -187,7 +190,11 @@ class RequirementUpdate(BaseModel):
     openings_count: Optional[int] = None
     filled_count: Optional[int] = None
     priority: Optional[PriorityEnum] = None
+    open_date: Optional[datetime] = None
+    hold_date: Optional[datetime] = None
+    closed_date: Optional[datetime] = None
     target_closing_date: Optional[datetime] = None
+    status_updated_at: Optional[datetime] = None
     assigned_recruiter_id: Optional[str] = None
     status: Optional[RequirementStatusEnum] = None
     position_status: Optional[PositionStatusEnum] = None
@@ -255,6 +262,50 @@ class WhatsAppEligibilityInfo(BaseModel):
     opt_out_status: bool = False
     reason: Optional[str] = None
 
+class EmploymentGapItem(BaseModel):
+    start_date: str
+    end_date: str
+    gap_months: int
+    previous_company: Optional[str] = None
+    next_company: Optional[str] = None
+    gap_reason: Optional[str] = None
+
+class EmploymentHistoryItem(BaseModel):
+    id: Optional[str] = None
+    company_name: str
+    designation: Optional[str] = None
+    start_date: Optional[str] = None  # Joining date (e.g. "2021-01" or "Jan 2021")
+    end_date: Optional[str] = None    # Leaving date (e.g. "2022-03" or "Present")
+    duration_years: Optional[float] = None
+    duration_months: Optional[int] = None
+    is_current: bool = False
+    location: Optional[str] = None
+    description: Optional[str] = None
+    reason_for_leaving: Optional[str] = None  # Candidate provided reason for departure
+
+class JobStabilityMetrics(BaseModel):
+    total_experience_years: float = 0.0
+    companies_count: int = 0
+    average_tenure_years: float = 0.0
+    average_tenure_months: int = 0
+    job_changes_recent_years: int = 0
+    job_changes_summary: str = ""
+    summary_headline: str = ""
+    stability_rating: str = "STABLE"  # "HIGH_RETENTION", "STABLE", "MODERATE", "FREQUENT_CHANGER", "REVIEW_RECOMMENDED"
+    stability_score: int = 80         # 0 - 100
+    stability_label: str = "Standard Career Progression"
+    stability_indicator: str = "STABLE"
+    hr_review_required: bool = False
+    short_stints_count: int = 0       # stints < 12 months
+    longest_tenure_years: float = 0.0
+    total_gaps_count: int = 0
+    total_gap_months: int = 0
+    employment_gaps: List[EmploymentGapItem] = []
+    factual_observations: List[str] = []
+    hr_evaluation_notes: Optional[str] = None
+    retention_risk_level: str = "LOW" # "LOW", "MEDIUM", "HIGH"
+    risk_reasons: List[str] = []
+
 class CandidateBase(BaseModel):
     first_name: str
     last_name: str
@@ -269,6 +320,7 @@ class CandidateBase(BaseModel):
     current_designation: Optional[str] = None
     current_ctc: Optional[float] = None
     expected_ctc: Optional[float] = None
+    employment_history: List[EmploymentHistoryItem] = []
     notice_period_days: int = 30
     notice_period: Optional[str] = "30 Days"
     skills: List[str] = []
@@ -319,6 +371,7 @@ class CandidateUpdate(BaseModel):
     current_designation: Optional[str] = None
     current_ctc: Optional[float] = None
     expected_ctc: Optional[float] = None
+    employment_history: Optional[List[EmploymentHistoryItem]] = None
     notice_period_days: Optional[int] = None
     notice_period: Optional[str] = None
     skills: Optional[List[str]] = None
@@ -365,6 +418,11 @@ class CandidateResponse(CandidateBase):
     last_whatsapp_contact_date: Optional[datetime] = None
     last_whatsapp_response_date: Optional[datetime] = None
     last_whatsapp_message_status: Optional[str] = None
+    stability_metrics: Optional[JobStabilityMetrics] = None
+    companies_count: int = 0
+    average_tenure_years: float = 0.0
+    stability_rating: str = "STABLE"
+    stability_label: str = "Stable Retention"
     created_at: datetime
     updated_at: datetime
 
@@ -1233,3 +1291,85 @@ class AIMatchScoreResponse(BaseModel):
     experience_fit: str
     ai_recommendation: str
     summary: str
+
+class ATSRecommendationItem(BaseModel):
+    category: str  # "critical" | "improvement" | "strength"
+    title: str
+    description: str
+
+class ATSCandidateDetails(BaseModel):
+    first_name: Optional[str] = ""
+    last_name: Optional[str] = ""
+    full_name: Optional[str] = ""
+    email: Optional[str] = ""
+    phone: Optional[str] = ""
+    location: Optional[str] = ""
+    total_experience: Optional[float] = 0.0
+    current_company: Optional[str] = ""
+    current_designation: Optional[str] = ""
+    education: Optional[str] = ""
+    highest_qualification: Optional[str] = ""
+    skills: List[str] = []
+    linkedin_url: Optional[str] = ""
+    github_url: Optional[str] = ""
+    summary: Optional[str] = ""
+
+class ATSAnalysisResponse(BaseModel):
+    overall_score: int
+    grade: str
+    pass_probability: str
+    summary: str
+    file_name: Optional[str] = None
+    file_size_formatted: Optional[str] = None
+    candidate_details: ATSCandidateDetails = ATSCandidateDetails()
+    sections_detected: Dict[str, bool] = {}
+    category_scores: Dict[str, int] = {}
+    category_max_scores: Dict[str, int] = {
+        "contact_info": 15,
+        "sections": 20,
+        "content_impact": 25,
+        "skills_keywords": 30,
+        "formatting": 10
+    }
+    contact_info_check: Dict[str, Any] = {}
+    formatting_check: Dict[str, Any] = {}
+    skills_analysis: Dict[str, Any] = {}
+    content_metrics: Dict[str, Any] = {}
+    recommendations: List[ATSRecommendationItem] = []
+    target_job: Optional[Dict[str, Any]] = None
+    temp_file_id: Optional[str] = None
+
+class ATSCreateCandidateRequest(BaseModel):
+    first_name: str
+    last_name: str
+    email: EmailStr
+    phone: Optional[str] = None
+    whatsapp_number: Optional[str] = None
+    location: Optional[str] = None
+    total_experience: float = 0.0
+    current_company: Optional[str] = None
+    current_designation: Optional[str] = None
+    education: Optional[str] = None
+    skills: List[str] = []
+    temp_file_id: Optional[str] = None
+    source: str = "ATS_CV_Studio"
+
+class AIAssistantMessageItem(BaseModel):
+    role: str  # "user" or "assistant"
+    content: str
+    timestamp: Optional[datetime] = None
+
+class AIAssistantChatRequest(BaseModel):
+    message: str
+    conversation_history: Optional[List[AIAssistantMessageItem]] = []
+    candidate_id: Optional[str] = None
+    requirement_id: Optional[str] = None
+    mode: Optional[str] = "general"
+
+class AIAssistantChatResponse(BaseModel):
+    reply: str
+    intent: str
+    data: Optional[Dict[str, Any]] = {}
+    suggested_prompts: List[str] = []
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+

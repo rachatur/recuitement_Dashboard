@@ -113,3 +113,126 @@ def test_delete_candidate_and_document():
     # 5. Confirm candidate 404s
     assert client.get(f"/api/v1/candidates/{cand_id}", headers={"Authorization": f"Bearer {token}"}).status_code == 404
 
+def test_employment_history_and_job_stability_analysis():
+    token = get_token()
+    ts = int(time.time() * 1000)
+
+    # 1. Create a candidate with 4 companies in 4 years (HR-20 Example Scenario)
+    cand_data = {
+        "first_name": "Job",
+        "last_name": f"Changer {ts}",
+        "email": f"frequent.changer.{ts}@example.com",
+        "total_experience": 4.0,
+        "current_company": "Fourth Company Ltd",
+        "current_designation": "Staff Engineer",
+        "employment_history": [
+            {
+                "company_name": "Fourth Company Ltd",
+                "designation": "Staff Engineer",
+                "start_date": "2023-01",
+                "end_date": "Present",
+                "duration_years": 1.0,
+                "duration_months": 12,
+                "is_current": True,
+                "reason_for_leaving": None
+            },
+            {
+                "company_name": "Third Company Inc",
+                "designation": "Senior Engineer",
+                "start_date": "2022-01",
+                "end_date": "2022-12",
+                "duration_years": 1.0,
+                "duration_months": 12,
+                "is_current": False,
+                "reason_for_leaving": "Career Advancement & Scope Expansion"
+            },
+            {
+                "company_name": "Second Startup Corp",
+                "designation": "Developer",
+                "start_date": "2021-01",
+                "end_date": "2021-12",
+                "duration_years": 1.0,
+                "duration_months": 12,
+                "is_current": False,
+                "reason_for_leaving": "Contract Completed / Startup Pivoted"
+            },
+            {
+                "company_name": "First Venture LLC",
+                "designation": "Junior Developer",
+                "start_date": "2020-01",
+                "end_date": "2020-12",
+                "duration_years": 1.0,
+                "duration_months": 12,
+                "is_current": False,
+                "reason_for_leaving": "Completed Initial Graduate Role"
+            }
+        ]
+    }
+
+    create_resp = client.post(
+        "/api/v1/candidates",
+        json=cand_data,
+        headers={"Authorization": f"Bearer {token}"}
+    )
+    assert create_resp.status_code == 200
+    candidate = create_resp.json()
+
+    # Verify Computed HR-20 Stability & Retention Metrics
+    assert candidate["companies_count"] == 4
+    assert candidate["average_tenure_years"] == 1.0
+    assert candidate["stability_metrics"]["average_tenure_months"] == 12
+    assert candidate["stability_metrics"]["job_changes_recent_years"] == 3
+    assert "3 job changes in 4 years" in candidate["stability_metrics"]["job_changes_summary"]
+    assert "4.0 years of experience | 4 companies | Average tenure: 12 months | 3 job changes in 4 years" in candidate["stability_metrics"]["summary_headline"]
+    assert candidate["stability_metrics"]["hr_review_required"] is True
+    assert candidate["stability_rating"] == "FREQUENT_CHANGER"
+    assert len(candidate["employment_history"]) == 4
+    assert candidate["employment_history"][1]["reason_for_leaving"] == "Career Advancement & Scope Expansion"
+
+    # 2. Update employment history to include an employment gap
+    updated_history_with_gap = [
+        {
+            "company_name": "High Retention Corp",
+            "designation": "Principal Architect",
+            "start_date": "2022-06",
+            "end_date": "Present",
+            "duration_years": 2.0,
+            "duration_months": 24,
+            "is_current": True,
+            "reason_for_leaving": None
+        },
+        {
+            "company_name": "Past Enterprise",
+            "designation": "Senior Engineer",
+            "start_date": "2019-01",
+            "end_date": "2021-12",
+            "duration_years": 3.0,
+            "duration_months": 36,
+            "is_current": False,
+            "reason_for_leaving": "Career Break for Certification & Relocation"
+        }
+    ]
+
+    put_hist_resp = client.put(
+        f"/api/v1/candidates/{candidate['id']}/employment-history",
+        json=updated_history_with_gap,
+        headers={"Authorization": f"Bearer {token}"}
+    )
+    assert put_hist_resp.status_code == 200
+    updated_cand = put_hist_resp.json()
+    assert len(updated_cand["employment_history"]) == 2
+    assert updated_cand["companies_count"] == 2
+    # Verify Gap calculation: 2021-12 to 2022-06 is 6 months gap
+    assert updated_cand["stability_metrics"]["total_gaps_count"] == 1
+    assert updated_cand["stability_metrics"]["total_gap_months"] == 6
+    assert len(updated_cand["stability_metrics"]["employment_gaps"]) == 1
+    assert updated_cand["stability_metrics"]["employment_gaps"][0]["gap_months"] == 6
+
+    # 3. Test filtering by stability_rating
+    filter_resp = client.get(
+        "/api/v1/candidates?stability_rating=HIGH_RETENTION",
+        headers={"Authorization": f"Bearer {token}"}
+    )
+    assert filter_resp.status_code == 200
+
+

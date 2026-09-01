@@ -24,6 +24,7 @@ import { AnalyticsPage } from './pages/AnalyticsPage';
 import { AuditLogsPage } from './pages/AuditLogsPage';
 import { UsersPage } from './pages/UsersPage';
 import { AIToolsPage } from './pages/AIToolsPage';
+import { AIAssistantPage } from './pages/AIAssistantPage';
 import { RefreshCw } from 'lucide-react';
 
 const AppContent: React.FC = () => {
@@ -142,6 +143,8 @@ const AppContent: React.FC = () => {
         return <AuditLogsPage />;
       case 'users':
         return <UsersPage />;
+      case 'ai-assistant':
+        return <AIAssistantPage />;
       case 'ai-tools':
         return <AIToolsPage />;
       default:

@@ -51,7 +51,7 @@ export const StatusBadge: React.FC<{ status: string }> = ({ status }) => {
   if (['RECEIVED', 'ON_HOLD', 'DRAFT', 'RESCHEDULED'].includes(s)) {
     return <Badge variant="warning">{status}</Badge>;
   }
-  if (['REJECTED', 'CLOSED', 'CANCELLED', 'DECLINED', 'WITHDRAWN', 'DID_NOT_JOIN', 'NO_SHOW'].includes(s)) {
+  if (['REJECTED', 'CLOSED', 'CANCELLED', 'DECLINED', 'WITHDRAWN', 'DID_NOT_JOIN', 'NO_SHOW', 'INACTIVE'].includes(s)) {
     return <Badge variant="danger">{status}</Badge>;
   }
 

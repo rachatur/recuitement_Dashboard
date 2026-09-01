@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import api from '../api/client';
-import { JobRequirement, Client, User } from '../types';
+import { JobRequirement, Client, User, RequirementStatus } from '../types';
 import { useAuth } from '../contexts/AuthContext';
 import { useNotifications } from '../contexts/NotificationContext';
 import { StatusBadge, PriorityBadge } from '../components/common/Badge';
@@ -9,9 +9,10 @@ import { Drawer } from '../components/common/Drawer';
 import {
   Briefcase, Plus, Search, MapPin, DollarSign, Users,
   Clock, Filter, Layers, ListFilter, Sparkles, RefreshCw,
-  CheckCircle2, AlertCircle, Building2, Upload, FileText, X, Pencil
+  CheckCircle2, AlertCircle, Building2, Upload, FileText, X, Pencil,
+  Calendar, Check, PauseCircle, XCircle, PlayCircle
 } from 'lucide-react';
-import { format } from 'date-fns';
+import { format, isValid } from 'date-fns';
 
 export const RequirementsPage: React.FC = () => {
   const { hasRole } = useAuth();
@@ -28,7 +29,7 @@ export const RequirementsPage: React.FC = () => {
   const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
   const [isLoading, setIsLoading] = useState(true);
 
-  // Add Requirement Modal State
+  // Add / Edit Requirement Modal State
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [editingReq, setEditingReq] = useState<JobRequirement | null>(null);
   const [clientId, setClientId] = useState('');
@@ -43,7 +44,11 @@ export const RequirementsPage: React.FC = () => {
   const [salaryMax, setSalaryMax] = useState(0);
   const [openings, setOpenings] = useState(1);
   const [priority, setPriority] = useState<'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT'>('MEDIUM');
-  const [requirementStatus, setRequirementStatus] = useState<'OPEN' | 'CLOSED'>('OPEN');
+  const [requirementStatus, setRequirementStatus] = useState<RequirementStatus>('OPEN');
+  const [openDate, setOpenDate] = useState(format(new Date(), 'yyyy-MM-dd'));
+  const [holdDate, setHoldDate] = useState(format(new Date(), 'yyyy-MM-dd'));
+  const [closedDate, setClosedDate] = useState(format(new Date(), 'yyyy-MM-dd'));
+  const [targetClosingDate, setTargetClosingDate] = useState('');
   const [recruiterId, setRecruiterId] = useState('');
   const [jobDesc, setJobDesc] = useState('');
   const [jobDescFile, setJobDescFile] = useState<File | null>(null);
@@ -91,7 +96,7 @@ export const RequirementsPage: React.FC = () => {
     setIsSubmitting(true);
     try {
       const skillsArray = skillsStr.split(',').map((s) => s.trim()).filter(Boolean);
-      const payload = {
+      const payload: any = {
         client_id: clientId,
         job_title: jobTitle,
         department,
@@ -107,8 +112,13 @@ export const RequirementsPage: React.FC = () => {
         priority,
         assigned_recruiter_id: recruiterId || undefined,
         status: requirementStatus,
+        open_date: openDate ? new Date(openDate).toISOString() : new Date().toISOString(),
+        hold_date: requirementStatus === 'ON_HOLD' && holdDate ? new Date(holdDate).toISOString() : undefined,
+        closed_date: (requirementStatus === 'CLOSED' || requirementStatus === 'CANCELLED') && closedDate ? new Date(closedDate).toISOString() : undefined,
+        target_closing_date: targetClosingDate ? new Date(targetClosingDate).toISOString() : undefined,
         job_description: jobDesc,
       };
+
       const requirementRes = editingReq
         ? await api.put(`/requirements/${editingReq.id}`, payload)
         : await api.post('/requirements', payload);
@@ -119,25 +129,38 @@ export const RequirementsPage: React.FC = () => {
         await api.post(`/requirements/${requirementRes.data.id}/jd/upload`, fileData);
       }
 
-      showToast('success', editingReq ? 'Requirement Updated' : 'Requirement Published',
-        editingReq ? `Updated job opening for ${jobTitle}` : jobDescFile
+      showToast(
+        'success',
+        editingReq ? 'Requirement Updated' : 'Requirement Published',
+        editingReq
+          ? `Updated job opening for ${jobTitle} (Status: ${requirementStatus})`
+          : jobDescFile
           ? `Created job opening for ${jobTitle} with attachment`
-          : `Created job opening for ${jobTitle}`);
+          : `Created job opening for ${jobTitle}`
+      );
       setIsAddOpen(false);
       setEditingReq(null);
-      setJobTitle('');
-      setDepartment('');
-      setSalaryMin(0);
-      setSalaryMax(0);
-      setRequirementStatus('OPEN');
-      setJobDesc('');
-      setJobDescFile(null);
+      resetForm();
       fetchRequirements();
     } catch (err: any) {
-      showToast('error', 'Creation Failed', err.response?.data?.detail || 'Could not create requirement');
+      showToast('error', 'Creation Failed', err.response?.data?.detail || 'Could not save requirement');
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const resetForm = () => {
+    setJobTitle('');
+    setDepartment('');
+    setSalaryMin(0);
+    setSalaryMax(0);
+    setRequirementStatus('OPEN');
+    setOpenDate(format(new Date(), 'yyyy-MM-dd'));
+    setHoldDate(format(new Date(), 'yyyy-MM-dd'));
+    setClosedDate(format(new Date(), 'yyyy-MM-dd'));
+    setTargetClosingDate('');
+    setJobDesc('');
+    setJobDescFile(null);
   };
 
   const handleEditRequirement = (requirement: JobRequirement) => {
@@ -155,10 +178,38 @@ export const RequirementsPage: React.FC = () => {
     setOpenings(requirement.openings_count || 1);
     setPriority(requirement.priority);
     setRecruiterId(requirement.assigned_recruiter_id || '');
-    setRequirementStatus(requirement.status === 'CLOSED' ? 'CLOSED' : 'OPEN');
+    setRequirementStatus(requirement.status);
+    setOpenDate(requirement.open_date ? format(new Date(requirement.open_date), 'yyyy-MM-dd') : format(new Date(), 'yyyy-MM-dd'));
+    setHoldDate(requirement.hold_date ? format(new Date(requirement.hold_date), 'yyyy-MM-dd') : format(new Date(), 'yyyy-MM-dd'));
+    setClosedDate(requirement.closed_date ? format(new Date(requirement.closed_date), 'yyyy-MM-dd') : format(new Date(), 'yyyy-MM-dd'));
+    setTargetClosingDate(requirement.target_closing_date ? format(new Date(requirement.target_closing_date), 'yyyy-MM-dd') : '');
     setJobDesc(requirement.job_description || '');
     setJobDescFile(null);
     setIsAddOpen(true);
+  };
+
+  const handleQuickStatusChange = async (reqId: string, nextStatus: 'OPEN' | 'ON_HOLD' | 'CLOSED', e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    try {
+      const posStatus = nextStatus === 'CLOSED' ? 'CLOSED' : nextStatus === 'ON_HOLD' ? 'ON_HOLD' : 'OPEN';
+      await api.put(`/requirements/${reqId}/position-status`, {
+        position_status: posStatus,
+        remarks: `Position status updated to ${nextStatus}`
+      });
+      showToast('success', 'Status Updated', `Requirement status set to ${nextStatus}`);
+      fetchRequirements();
+      if (selectedReq && selectedReq.id === reqId) {
+        setSelectedReq((prev) => prev ? { ...prev, status: nextStatus, position_status: posStatus } : null);
+      }
+    } catch (err: any) {
+      showToast('error', 'Status Change Failed', err.response?.data?.detail || 'Could not update status');
+    }
+  };
+
+  const formatDateDisplay = (dateStr?: string | null) => {
+    if (!dateStr) return null;
+    const d = new Date(dateStr);
+    return isValid(d) ? format(d, 'dd MMM yyyy') : null;
   };
 
   const canManage = hasRole(['SUPER_ADMIN', 'ADMIN', 'RECRUITER', 'TEAM_LEAD']);
@@ -173,7 +224,7 @@ export const RequirementsPage: React.FC = () => {
             Job Requirements & Openings
           </h2>
           <p className="text-xs text-slate-400 mt-0.5">
-            Active client mandates, required technical competencies, salary ranges, and opening status.
+            Active client mandates, required technical competencies, opening & lifecycle dates, and status tracking.
           </p>
         </div>
 
@@ -200,7 +251,11 @@ export const RequirementsPage: React.FC = () => {
 
           {canManage && (
             <button
-              onClick={() => setIsAddOpen(true)}
+              onClick={() => {
+                setEditingReq(null);
+                resetForm();
+                setIsAddOpen(true);
+              }}
               className="flex items-center gap-2 px-4 py-2 bg-brand-600 hover:bg-brand-500 text-white rounded-xl text-xs font-bold shadow-lg shadow-brand-900/40 transition-all"
             >
               <Plus className="w-4 h-4" />
@@ -278,144 +333,250 @@ export const RequirementsPage: React.FC = () => {
             <table className="w-full text-left text-xs">
               <thead className="bg-slate-950/80 text-slate-400 uppercase tracking-wider text-[10px] font-bold border-b border-slate-800">
                 <tr>
-                  <th className="px-5 py-3.5">Req Code</th>
-                  <th className="px-5 py-3.5">Job Title</th>
-                  <th className="px-5 py-3.5">Client</th>
-                  <th className="px-5 py-3.5">Location / Mode</th>
-                  <th className="px-5 py-3.5">Required Skills</th>
-                  <th className="px-5 py-3.5 text-center">Openings</th>
-                  <th className="px-5 py-3.5">Priority</th>
-                  <th className="px-5 py-3.5">Status</th>
-                  <th className="px-5 py-3.5 text-right">Actions</th>
+                  <th className="px-4 py-3.5">Req Code</th>
+                  <th className="px-4 py-3.5">Job Title</th>
+                  <th className="px-4 py-3.5">Client</th>
+                  <th className="px-4 py-3.5">Location / Mode</th>
+                  <th className="px-4 py-3.5">Required Skills</th>
+                  <th className="px-4 py-3.5 text-center">Openings</th>
+                  <th className="px-4 py-3.5">Priority</th>
+                  <th className="px-4 py-3.5">Status & Dates</th>
+                  <th className="px-4 py-3.5 text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-800/60">
-                {requirements.map((r) => (
-                  <tr
-                    key={r.id}
-                    className="hover:bg-slate-800/50 transition-colors group cursor-pointer"
-                    onClick={() => setSelectedReq(r)}
-                  >
-                    <td className="px-5 py-3.5 font-mono text-slate-400 font-bold">{r.req_code}</td>
-                    <td className="px-5 py-3.5 font-bold text-slate-100 group-hover:text-brand-300 transition-colors">
-                      {r.job_title}
-                    </td>
-                    <td className="px-5 py-3.5 text-slate-300">{r.client_name}</td>
-                    <td className="px-5 py-3.5 text-slate-300">
-                      <div>{r.location || 'Remote'}</div>
-                      <div className="text-[10px] font-mono text-slate-400">{r.work_mode}</div>
-                    </td>
-                    <td className="px-5 py-3.5">
-                      <div className="flex flex-wrap gap-1 max-w-xs">
-                        {r.required_skills.slice(0, 3).map((sk) => (
-                          <span
-                            key={sk}
-                            className="px-1.5 py-0.5 bg-slate-800 text-slate-300 rounded border border-slate-700 text-[10px]"
-                          >
-                            {sk}
+                {requirements.map((r) => {
+                  const openDateDisplay = formatDateDisplay(r.open_date);
+                  const holdDateDisplay = formatDateDisplay(r.hold_date || r.status_updated_at);
+                  const closedDateDisplay = formatDateDisplay(r.closed_date || r.status_updated_at);
+                  const targetDateDisplay = formatDateDisplay(r.target_closing_date);
+
+                  return (
+                    <tr
+                      key={r.id}
+                      className="hover:bg-slate-800/50 transition-colors group cursor-pointer"
+                      onClick={() => setSelectedReq(r)}
+                    >
+                      <td className="px-4 py-3.5 font-mono text-slate-400 font-bold">{r.req_code}</td>
+                      <td className="px-4 py-3.5 font-bold text-slate-100 group-hover:text-brand-300 transition-colors">
+                        {r.job_title}
+                      </td>
+                      <td className="px-4 py-3.5 text-slate-300">{r.client_name}</td>
+                      <td className="px-4 py-3.5 text-slate-300">
+                        <div>{r.location || 'Remote'}</div>
+                        <div className="text-[10px] font-mono text-slate-400">{r.work_mode}</div>
+                      </td>
+                      <td className="px-4 py-3.5">
+                        <div className="flex flex-wrap gap-1 max-w-xs">
+                          {r.required_skills.slice(0, 3).map((sk) => (
+                            <span
+                              key={sk}
+                              className="px-1.5 py-0.5 bg-slate-800 text-slate-300 rounded border border-slate-700 text-[10px]"
+                            >
+                              {sk}
+                            </span>
+                          ))}
+                          {r.required_skills.length > 3 && (
+                            <span className="text-[10px] text-slate-400 self-center">
+                              +{r.required_skills.length - 3}
+                            </span>
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-4 py-3.5 text-center font-mono">
+                        <span className="text-slate-100 font-bold">{r.filled_count}</span>
+                        <span className="text-slate-400">/{r.openings_count}</span>
+                      </td>
+                      <td className="px-4 py-3.5">
+                        <PriorityBadge priority={r.priority} />
+                      </td>
+
+                      {/* Status & Position Dates Column */}
+                      <td className="px-4 py-3.5" onClick={(e) => e.stopPropagation()}>
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-1.5">
+                            <select
+                              value={r.status}
+                              onChange={(e) => handleQuickStatusChange(r.id, e.target.value as any)}
+                              className={`text-[11px] font-extrabold px-2 py-0.5 rounded-lg border focus:outline-none transition-all cursor-pointer ${
+                                r.status === 'OPEN'
+                                  ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
+                                  : r.status === 'ON_HOLD'
+                                  ? 'bg-amber-500/20 text-amber-300 border-amber-500/40'
+                                  : 'bg-rose-500/20 text-rose-300 border-rose-500/40'
+                              }`}
+                            >
+                              <option value="OPEN" className="bg-slate-900 text-emerald-400">OPEN</option>
+                              <option value="ON_HOLD" className="bg-slate-900 text-amber-400">ON HOLD</option>
+                              <option value="CLOSED" className="bg-slate-900 text-rose-400">CLOSED</option>
+                            </select>
+                          </div>
+
+                          {/* Specific date milestone */}
+                          <div className="text-[10px] font-mono leading-tight space-y-0.5">
+                            {r.status === 'OPEN' && openDateDisplay && (
+                              <div className="text-emerald-400 flex items-center gap-1">
+                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 inline-block" />
+                                <span>Opened: {openDateDisplay}</span>
+                              </div>
+                            )}
+
+                            {r.status === 'ON_HOLD' && (
+                              <div className="text-amber-400 flex items-center gap-1">
+                                <span className="w-1.5 h-1.5 rounded-full bg-amber-400 inline-block" />
+                                <span>Hold: {holdDateDisplay || openDateDisplay}</span>
+                              </div>
+                            )}
+
+                            {r.status === 'CLOSED' && (
+                              <div className="text-rose-400 flex items-center gap-1">
+                                <span className="w-1.5 h-1.5 rounded-full bg-rose-400 inline-block" />
+                                <span>Closed: {closedDateDisplay || openDateDisplay}</span>
+                              </div>
+                            )}
+
+                            {targetDateDisplay && (
+                              <div className="text-slate-400 flex items-center gap-1">
+                                <Calendar className="w-2.5 h-2.5" />
+                                <span>Target: {targetDateDisplay}</span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </td>
+
+                      <td className="px-4 py-3.5 text-right">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleEditRequirement(r);
+                          }}
+                          className="px-3 py-1 bg-slate-800 hover:bg-brand-600 text-slate-300 hover:text-white rounded-lg text-[11px] font-semibold transition-all border border-slate-700"
+                        >
+                          <span className="inline-flex items-center gap-1.5">
+                            <Pencil className="w-3 h-3" /> Edit
                           </span>
-                        ))}
-                        {r.required_skills.length > 3 && (
-                          <span className="text-[10px] text-slate-400 self-center">
-                            +{r.required_skills.length - 3}
-                          </span>
-                        )}
-                      </div>
-                    </td>
-                    <td className="px-5 py-3.5 text-center font-mono">
-                      <span className="text-slate-100 font-bold">{r.filled_count}</span>
-                      <span className="text-slate-400">/{r.openings_count}</span>
-                    </td>
-                    <td className="px-5 py-3.5">
-                      <PriorityBadge priority={r.priority} />
-                    </td>
-                    <td className="px-5 py-3.5">
-                      <StatusBadge status={r.status} />
-                    </td>
-                    <td className="px-5 py-3.5 text-right">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleEditRequirement(r);
-                        }}
-                        className="px-3 py-1 bg-slate-800 hover:bg-brand-600 text-slate-300 hover:text-white rounded-lg text-[11px] font-semibold transition-all border border-slate-700"
-                      >
-                        <span className="inline-flex items-center gap-1.5">
-                          <Pencil className="w-3 h-3" /> Edit
-                        </span>
-                      </button>
-                    </td>
-                  </tr>
-                ))}
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {requirements.map((r) => (
-            <div
-              key={r.id}
-              onClick={() => setSelectedReq(r)}
-              className="bg-slate-900/90 border border-slate-800 hover:border-brand-500/50 p-5 rounded-2xl shadow-xl transition-all cursor-pointer group flex flex-col justify-between"
-            >
-              <div>
-                <div className="flex items-center justify-between">
-                  <span className="font-mono text-xs text-slate-400 font-bold">{r.req_code}</span>
-                  <PriorityBadge priority={r.priority} />
-                </div>
-                <h4 className="text-base font-bold text-slate-100 mt-2 group-hover:text-brand-300 transition-colors">
-                  {r.job_title}
-                </h4>
-                <p className="text-xs text-slate-300 flex items-center gap-1.5 mt-1">
-                  <Building2 className="w-3.5 h-3.5 text-slate-400" />
-                  {r.client_name}
-                </p>
+          {requirements.map((r) => {
+            const openDateDisplay = formatDateDisplay(r.open_date);
+            const holdDateDisplay = formatDateDisplay(r.hold_date || r.status_updated_at);
+            const closedDateDisplay = formatDateDisplay(r.closed_date || r.status_updated_at);
+            const targetDateDisplay = formatDateDisplay(r.target_closing_date);
 
-                <div className="flex items-center gap-3 text-xs text-slate-400 mt-3 pt-3 border-t border-slate-800">
-                  <span className="flex items-center gap-1">
-                    <MapPin className="w-3.5 h-3.5 text-slate-400" />
-                    {r.work_mode}
-                  </span>
-                  <span>•</span>
-                  <span className="flex items-center gap-1">
-                    <DollarSign className="w-3.5 h-3.5 text-slate-400" />
-                    ${(r.salary_min || 120000) / 1000}k - ${(r.salary_max || 160000) / 1000}k
-                  </span>
-                </div>
+            return (
+              <div
+                key={r.id}
+                onClick={() => setSelectedReq(r)}
+                className="bg-slate-900/90 border border-slate-800 hover:border-brand-500/50 p-5 rounded-2xl shadow-xl transition-all cursor-pointer group flex flex-col justify-between"
+              >
+                <div>
+                  <div className="flex items-center justify-between">
+                    <span className="font-mono text-xs text-slate-400 font-bold">{r.req_code}</span>
+                    <PriorityBadge priority={r.priority} />
+                  </div>
+                  <h4 className="text-base font-bold text-slate-100 mt-2 group-hover:text-brand-300 transition-colors">
+                    {r.job_title}
+                  </h4>
+                  <p className="text-xs text-slate-300 flex items-center gap-1.5 mt-1">
+                    <Building2 className="w-3.5 h-3.5 text-slate-400" />
+                    {r.client_name}
+                  </p>
 
-                <div className="flex flex-wrap gap-1.5 mt-3">
-                  {r.required_skills.slice(0, 4).map((sk) => (
-                    <span
-                      key={sk}
-                      className="px-2 py-0.5 bg-slate-800 text-slate-300 rounded-md border border-slate-700 text-[10px]"
-                    >
-                      {sk}
+                  {/* Dates Timeline Banner */}
+                  <div className="mt-3 p-2.5 bg-slate-950/80 rounded-xl border border-slate-800/80 space-y-1 text-[11px] font-mono">
+                    {openDateDisplay && (
+                      <div className="flex items-center justify-between text-slate-300">
+                        <span className="text-slate-400 flex items-center gap-1">
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" /> Opened Date:
+                        </span>
+                        <span className="font-bold text-slate-200">{openDateDisplay}</span>
+                      </div>
+                    )}
+                    {r.status === 'ON_HOLD' && holdDateDisplay && (
+                      <div className="flex items-center justify-between text-amber-300">
+                        <span className="text-amber-400 flex items-center gap-1">
+                          <span className="w-1.5 h-1.5 rounded-full bg-amber-400" /> On Hold Date:
+                        </span>
+                        <span className="font-bold">{holdDateDisplay}</span>
+                      </div>
+                    )}
+                    {r.status === 'CLOSED' && closedDateDisplay && (
+                      <div className="flex items-center justify-between text-rose-300">
+                        <span className="text-rose-400 flex items-center gap-1">
+                          <span className="w-1.5 h-1.5 rounded-full bg-rose-400" /> Closed Date:
+                        </span>
+                        <span className="font-bold">{closedDateDisplay}</span>
+                      </div>
+                    )}
+                    {targetDateDisplay && (
+                      <div className="flex items-center justify-between text-slate-400 border-t border-slate-800/60 pt-1 mt-1">
+                        <span className="flex items-center gap-1">
+                          <Calendar className="w-2.5 h-2.5" /> Target Close:
+                        </span>
+                        <span>{targetDateDisplay}</span>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="flex items-center gap-3 text-xs text-slate-400 mt-3 pt-2 border-t border-slate-800">
+                    <span className="flex items-center gap-1">
+                      <MapPin className="w-3.5 h-3.5 text-slate-400" />
+                      {r.work_mode}
                     </span>
-                  ))}
-                </div>
-              </div>
+                    <span>•</span>
+                    <span className="flex items-center gap-1">
+                      <DollarSign className="w-3.5 h-3.5 text-slate-400" />
+                      ${(r.salary_min || 120000) / 1000}k - ${(r.salary_max || 160000) / 1000}k
+                    </span>
+                  </div>
 
-              <div className="flex items-center justify-between pt-4 mt-4 border-t border-slate-800 text-xs">
-                <div className="font-mono text-slate-400">
-                  Filled: <strong className="text-brand-400">{r.filled_count}</strong>/{r.openings_count}
+                  <div className="flex flex-wrap gap-1.5 mt-3">
+                    {r.required_skills.slice(0, 4).map((sk) => (
+                      <span
+                        key={sk}
+                        className="px-2 py-0.5 bg-slate-800 text-slate-300 rounded-md border border-slate-700 text-[10px]"
+                      >
+                        {sk}
+                      </span>
+                    ))}
+                  </div>
                 </div>
-                <StatusBadge status={r.status} />
+
+                <div className="flex items-center justify-between pt-4 mt-4 border-t border-slate-800 text-xs">
+                  <div className="font-mono text-slate-400">
+                    Filled: <strong className="text-brand-400">{r.filled_count}</strong>/{r.openings_count}
+                  </div>
+                  <StatusBadge status={r.status} />
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
 
-      {/* Post Requirement Modal */}
+      {/* Post / Edit Requirement Modal */}
       <Modal
         isOpen={isAddOpen}
         onClose={() => {
           setIsAddOpen(false);
           setEditingReq(null);
         }}
-        title={editingReq ? 'Edit Client Job Requirement' : 'Post New Client Job Requirement'}
-        subtitle={editingReq ? 'Update the opening, salary range, and status.' : 'Create an active recruitment mandate with salary targets and required technical skills.'}
+        title={editingReq ? 'Edit Client Job Requirement & Dates' : 'Post New Client Job Requirement'}
+        subtitle={
+          editingReq
+            ? 'Update the opening details, lifecycle dates (Open, Hold, Closed), and hiring status.'
+            : 'Create an active recruitment mandate with opening date, salary targets, and required technical skills.'
+        }
         maxWidth="2xl"
       >
         <form onSubmit={handleCreateRequirement} className="space-y-4">
@@ -494,6 +655,96 @@ export const RequirementsPage: React.FC = () => {
                 <option value="LOW">Low</option>
               </select>
             </div>
+            <div>
+              <label className="block text-xs font-semibold uppercase tracking-wider text-slate-300 mb-1">
+                Requirement Status
+              </label>
+              <select
+                value={requirementStatus}
+                onChange={(e) => setRequirementStatus(e.target.value as any)}
+                className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3.5 py-2 text-xs text-slate-100 focus:outline-none focus:border-brand-500 font-bold"
+              >
+                <option value="OPEN">🟢 OPEN (Active)</option>
+                <option value="ON_HOLD">⏸️ ON HOLD (Paused)</option>
+                <option value="CLOSED">✕ CLOSED (Filled/Ended)</option>
+              </select>
+            </div>
+          </div>
+
+          {/* Lifecycle Dates Box */}
+          <div className="p-3.5 bg-slate-950/80 rounded-xl border border-slate-800 space-y-3">
+            <span className="text-[11px] font-extrabold uppercase tracking-wider text-brand-400 flex items-center gap-1.5">
+              <Calendar className="w-3.5 h-3.5" />
+              Position Lifecycle Dates
+            </span>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div>
+                <label className="block text-[10px] font-bold text-slate-300 mb-1">
+                  Opened Date *
+                </label>
+                <input
+                  type="date"
+                  required
+                  value={openDate}
+                  onChange={(e) => setOpenDate(e.target.value)}
+                  className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-1.5 text-xs text-slate-100 focus:outline-none focus:border-brand-500"
+                />
+              </div>
+
+              {requirementStatus === 'ON_HOLD' ? (
+                <div>
+                  <label className="block text-[10px] font-bold text-amber-300 mb-1">
+                    On-Hold Date *
+                  </label>
+                  <input
+                    type="date"
+                    required
+                    value={holdDate}
+                    onChange={(e) => setHoldDate(e.target.value)}
+                    className="w-full bg-slate-800 border border-amber-500/50 rounded-xl px-3 py-1.5 text-xs text-amber-200 focus:outline-none focus:border-amber-500"
+                  />
+                </div>
+              ) : requirementStatus === 'CLOSED' ? (
+                <div>
+                  <label className="block text-[10px] font-bold text-rose-300 mb-1">
+                    Closed Date *
+                  </label>
+                  <input
+                    type="date"
+                    required
+                    value={closedDate}
+                    onChange={(e) => setClosedDate(e.target.value)}
+                    className="w-full bg-slate-800 border border-rose-500/50 rounded-xl px-3 py-1.5 text-xs text-rose-200 focus:outline-none focus:border-rose-500"
+                  />
+                </div>
+              ) : (
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-400 mb-1">
+                    Target Close Date (Optional)
+                  </label>
+                  <input
+                    type="date"
+                    value={targetClosingDate}
+                    onChange={(e) => setTargetClosingDate(e.target.value)}
+                    className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-1.5 text-xs text-slate-100 focus:outline-none focus:border-brand-500"
+                  />
+                </div>
+              )}
+
+              {requirementStatus !== 'OPEN' && (
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-400 mb-1">
+                    Target Close Date (Optional)
+                  </label>
+                  <input
+                    type="date"
+                    value={targetClosingDate}
+                    onChange={(e) => setTargetClosingDate(e.target.value)}
+                    className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-1.5 text-xs text-slate-100 focus:outline-none focus:border-brand-500"
+                  />
+                </div>
+              )}
+            </div>
           </div>
 
           <div>
@@ -558,20 +809,6 @@ export const RequirementsPage: React.FC = () => {
                 className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3.5 py-2 text-xs text-slate-100 focus:outline-none focus:border-brand-500"
               />
             </div>
-          </div>
-
-          <div>
-            <label className="block text-xs font-semibold uppercase tracking-wider text-slate-300 mb-1">
-              Requirement Status
-            </label>
-            <select
-              value={requirementStatus}
-              onChange={(e) => setRequirementStatus(e.target.value as 'OPEN' | 'CLOSED')}
-              className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3.5 py-2 text-xs text-slate-100 focus:outline-none focus:border-brand-500"
-            >
-              <option value="OPEN">Open - accepting candidates</option>
-              <option value="CLOSED">Closed - stop accepting candidates</option>
-            </select>
           </div>
 
           <div>
@@ -659,19 +896,109 @@ export const RequirementsPage: React.FC = () => {
       >
         {selectedReq && (
           <div className="space-y-6">
-            <div className="flex items-center justify-between p-4 bg-slate-950/80 rounded-xl border border-slate-800">
-              <div>
-                <span className="text-[10px] uppercase font-bold text-slate-400">Position Status</span>
-                <div className="mt-1 flex items-center gap-2">
-                  <StatusBadge status={selectedReq.status} />
-                  <PriorityBadge priority={selectedReq.priority} />
+            {/* Top Status & Quick Switch Actions */}
+            <div className="p-4 bg-slate-950/80 rounded-xl border border-slate-800 space-y-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <span className="text-[10px] uppercase font-bold text-slate-400">Position Status</span>
+                  <div className="mt-1 flex items-center gap-2">
+                    <StatusBadge status={selectedReq.status} />
+                    <PriorityBadge priority={selectedReq.priority} />
+                  </div>
+                </div>
+                <div className="text-right">
+                  <span className="text-[10px] uppercase font-bold text-slate-400">Positions Filled</span>
+                  <p className="text-xl font-black text-brand-400 font-mono">
+                    {selectedReq.filled_count} / {selectedReq.openings_count}
+                  </p>
                 </div>
               </div>
-              <div className="text-right">
-                <span className="text-[10px] uppercase font-bold text-slate-400">Positions Filled</span>
-                <p className="text-xl font-black text-brand-400 font-mono">
-                  {selectedReq.filled_count} / {selectedReq.openings_count}
-                </p>
+
+              {/* 3 Quick Status Action Buttons */}
+              <div className="pt-2 border-t border-slate-800/80 flex items-center gap-2">
+                <span className="text-[10px] text-slate-400 font-bold uppercase">Quick Set:</span>
+                <button
+                  onClick={() => handleQuickStatusChange(selectedReq.id, 'OPEN')}
+                  className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all flex items-center gap-1 ${
+                    selectedReq.status === 'OPEN'
+                      ? 'bg-emerald-600 text-white shadow-sm'
+                      : 'bg-slate-800 hover:bg-slate-700 text-slate-300'
+                  }`}
+                >
+                  <PlayCircle className="w-3 h-3" />
+                  Open
+                </button>
+                <button
+                  onClick={() => handleQuickStatusChange(selectedReq.id, 'ON_HOLD')}
+                  className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all flex items-center gap-1 ${
+                    selectedReq.status === 'ON_HOLD'
+                      ? 'bg-amber-600 text-white shadow-sm'
+                      : 'bg-slate-800 hover:bg-slate-700 text-slate-300'
+                  }`}
+                >
+                  <PauseCircle className="w-3 h-3" />
+                  Hold
+                </button>
+                <button
+                  onClick={() => handleQuickStatusChange(selectedReq.id, 'CLOSED')}
+                  className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all flex items-center gap-1 ${
+                    selectedReq.status === 'CLOSED'
+                      ? 'bg-rose-600 text-white shadow-sm'
+                      : 'bg-slate-800 hover:bg-slate-700 text-slate-300'
+                  }`}
+                >
+                  <XCircle className="w-3 h-3" />
+                  Close
+                </button>
+              </div>
+            </div>
+
+            {/* Position Lifecycle Dates Timeline Card */}
+            <div className="p-4 bg-slate-950/80 rounded-xl border border-slate-800 space-y-3">
+              <span className="text-xs font-bold uppercase tracking-wider text-slate-300 flex items-center gap-2">
+                <Calendar className="w-4 h-4 text-brand-400" />
+                Position Lifecycle Dates & Milestones
+              </span>
+              <div className="grid grid-cols-2 gap-3 text-xs">
+                <div className="p-3 bg-slate-900/90 rounded-xl border border-slate-800">
+                  <span className="text-slate-400 flex items-center gap-1 text-[11px]">
+                    <span className="w-2 h-2 rounded-full bg-emerald-400" />
+                    Position Opened Date
+                  </span>
+                  <p className="font-bold text-slate-100 mt-1 font-mono text-sm">
+                    {formatDateDisplay(selectedReq.open_date) || 'N/A'}
+                  </p>
+                </div>
+
+                <div className="p-3 bg-slate-900/90 rounded-xl border border-slate-800">
+                  <span className="text-slate-400 flex items-center gap-1 text-[11px]">
+                    <Calendar className="w-3 h-3 text-brand-400" />
+                    Target Close Date
+                  </span>
+                  <p className="font-bold text-slate-100 mt-1 font-mono text-sm">
+                    {formatDateDisplay(selectedReq.target_closing_date) || 'Not specified'}
+                  </p>
+                </div>
+
+                <div className="p-3 bg-slate-900/90 rounded-xl border border-slate-800">
+                  <span className="text-slate-400 flex items-center gap-1 text-[11px]">
+                    <span className="w-2 h-2 rounded-full bg-amber-400" />
+                    On-Hold Date
+                  </span>
+                  <p className="font-bold text-slate-100 mt-1 font-mono text-sm">
+                    {formatDateDisplay(selectedReq.hold_date) || (selectedReq.status === 'ON_HOLD' ? formatDateDisplay(selectedReq.status_updated_at) : 'N/A')}
+                  </p>
+                </div>
+
+                <div className="p-3 bg-slate-900/90 rounded-xl border border-slate-800">
+                  <span className="text-slate-400 flex items-center gap-1 text-[11px]">
+                    <span className="w-2 h-2 rounded-full bg-rose-400" />
+                    Closed Date
+                  </span>
+                  <p className="font-bold text-slate-100 mt-1 font-mono text-sm">
+                    {formatDateDisplay(selectedReq.closed_date) || (selectedReq.status === 'CLOSED' ? formatDateDisplay(selectedReq.status_updated_at) : 'N/A')}
+                  </p>
+                </div>
               </div>
             </div>
 

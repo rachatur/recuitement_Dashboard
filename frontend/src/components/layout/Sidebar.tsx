@@ -6,7 +6,7 @@ import {
   CalendarCheck2, FileCheck2, BarChart3, ShieldAlert,
   UserCheck, Sparkles, Workflow, Layers, MessageSquare,
   Radio, FileText, MessagesSquare, Ban, Settings,
-  History, ChevronDown, ChevronRight, CheckCircle2, Award
+  History, ChevronDown, ChevronRight, CheckCircle2, Award, Bot
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -306,6 +306,26 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab }) => 
             </p>
           </div>
           <div className="space-y-0.5">
+            {isRoleAllowed(['SUPER_ADMIN', 'ADMIN', 'RECRUITER', 'TEAM_LEAD', 'VIEWER']) && (
+              <button
+                onClick={() => setActiveTab('ai-assistant')}
+                className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-semibold transition-all ${
+                  activeTab === 'ai-assistant'
+                    ? 'bg-gradient-to-r from-brand-600/30 to-indigo-600/30 text-brand-200 border border-brand-500/40 shadow-md shadow-brand-900/20'
+                    : 'text-slate-300 hover:text-white hover:bg-slate-900/80'
+                }`}
+              >
+                <div className="flex items-center gap-3 truncate">
+                  <Bot className="w-4 h-4 text-brand-400 shrink-0" />
+                  <span className="font-bold">AI Assistant</span>
+                </div>
+                <span className="text-[9px] font-extrabold px-1.5 py-0.2 bg-gradient-to-r from-brand-500/30 to-indigo-500/30 text-brand-300 border border-brand-400/40 rounded-full flex items-center gap-1">
+                  <Sparkles className="w-2.5 h-2.5" />
+                  Copilot
+                </span>
+              </button>
+            )}
+
             {isRoleAllowed(['SUPER_ADMIN', 'ADMIN', 'TEAM_LEAD', 'RECRUITER', 'VIEWER']) && (
               <button
                 onClick={() => setActiveTab('analytics')}

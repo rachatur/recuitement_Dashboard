@@ -4,8 +4,9 @@ import { JobRequirement, PositionStatus } from '../types';
 import {
   Layers, Search, Filter, Download, Upload,
   CheckCircle2, AlertCircle, XCircle, Briefcase, Building2,
-  RefreshCw, Radio, Send, FileText, Check, AlertTriangle, ArrowRight
+  RefreshCw, Radio, Send, FileText, Check, AlertTriangle, ArrowRight, Calendar
 } from 'lucide-react';
+import { format, isValid } from 'date-fns';
 
 interface PositionTrackingPageProps {
   onNavigateToCampaigns?: (candidateIds: string[], requirementId?: string) => void;
@@ -241,18 +242,38 @@ export const PositionTrackingPage: React.FC<PositionTrackingPageProps> = ({
                         </div>
                       </td>
 
-                      {/* Position Status Badge */}
+                      {/* Position Status Badge & Dates */}
                       <td className="py-3.5 px-4">
-                        <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold border ${
-                          req.position_status === 'OPEN' ? 'bg-emerald-500/10 text-emerald-300 border-emerald-500/30' :
-                          req.position_status === 'ON_HOLD' ? 'bg-amber-500/10 text-amber-300 border-amber-500/30' :
-                          'bg-slate-800 text-slate-400 border-slate-700'
-                        }`}>
-                          {req.position_status === 'OPEN' && <CheckCircle2 className="w-3 h-3 text-emerald-400" />}
-                          {req.position_status === 'ON_HOLD' && <AlertCircle className="w-3 h-3 text-amber-400" />}
-                          {req.position_status === 'CLOSED' && <XCircle className="w-3 h-3 text-slate-500" />}
-                          {req.position_status}
-                        </span>
+                        <div className="space-y-1">
+                          <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold border ${
+                            req.position_status === 'OPEN' ? 'bg-emerald-500/10 text-emerald-300 border-emerald-500/30' :
+                            req.position_status === 'ON_HOLD' ? 'bg-amber-500/10 text-amber-300 border-amber-500/30' :
+                            'bg-rose-500/10 text-rose-400 border-rose-500/30'
+                          }`}>
+                            {req.position_status === 'OPEN' && <CheckCircle2 className="w-3 h-3 text-emerald-400" />}
+                            {req.position_status === 'ON_HOLD' && <AlertCircle className="w-3 h-3 text-amber-400" />}
+                            {req.position_status === 'CLOSED' && <XCircle className="w-3 h-3 text-rose-400" />}
+                            {req.position_status}
+                          </span>
+
+                          <div className="text-[10px] font-mono text-slate-400">
+                            {req.position_status === 'OPEN' && req.open_date && (
+                              <span className="text-emerald-400">
+                                Opened: {isValid(new Date(req.open_date)) ? format(new Date(req.open_date), 'dd MMM yyyy') : ''}
+                              </span>
+                            )}
+                            {req.position_status === 'ON_HOLD' && (
+                              <span className="text-amber-400">
+                                Hold: {req.hold_date && isValid(new Date(req.hold_date)) ? format(new Date(req.hold_date), 'dd MMM yyyy') : (req.status_updated_at && isValid(new Date(req.status_updated_at)) ? format(new Date(req.status_updated_at), 'dd MMM yyyy') : '')}
+                              </span>
+                            )}
+                            {req.position_status === 'CLOSED' && (
+                              <span className="text-rose-400">
+                                Closed: {req.closed_date && isValid(new Date(req.closed_date)) ? format(new Date(req.closed_date), 'dd MMM yyyy') : (req.status_updated_at && isValid(new Date(req.status_updated_at)) ? format(new Date(req.status_updated_at), 'dd MMM yyyy') : '')}
+                              </span>
+                            )}
+                          </div>
+                        </div>
                       </td>
 
                       {/* Openings */}

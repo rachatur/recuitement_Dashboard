@@ -1,6 +1,7 @@
 import React, { ReactNode } from 'react';
 import { Sidebar } from './Sidebar';
 import { Navbar } from './Navbar';
+import { AIAssistantDrawer } from '../common/AIAssistantDrawer';
 
 interface AppLayoutProps {
   activeTab: string;
@@ -30,6 +31,10 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
           <div className="max-w-7xl mx-auto">{children}</div>
         </main>
       </div>
+
+      {/* Global Floating AI Copilot Widget */}
+      <AIAssistantDrawer />
     </div>
   );
 };
+

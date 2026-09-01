@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { Candidate, CandidateDocument, CandidateStatusHistory } from '../types';
+import { Candidate, CandidateDocument, CandidateStatusHistory, EmploymentHistoryItem } from '../types';
 import {
   User, Mail, Phone, MapPin, Briefcase, Calendar,
   ShieldCheck, ShieldAlert, Download, Upload, CheckCircle2,
   XCircle, Clock, ExternalLink, ArrowLeft, RefreshCw, MessageSquare,
-  Award, FileText, Check, AlertTriangle, Send, Trash2, Share2, Building
+  Award, FileText, Check, AlertTriangle, Send, Trash2, Share2, Building,
+  History, TrendingUp, Edit2, Plus, Layers
 } from 'lucide-react';
 
 interface CandidateProfilePageProps {
@@ -20,7 +21,7 @@ export const CandidateProfilePage: React.FC<CandidateProfilePageProps> = ({
   const { token } = useAuth();
   const [candidate, setCandidate] = useState<Candidate | null>(null);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'profile' | 'lifecycle' | 'whatsapp' | 'documents' | 'history'>('profile');
+  const [activeTab, setActiveTab] = useState<'profile' | 'employment' | 'lifecycle' | 'whatsapp' | 'documents' | 'history'>('profile');
   const [templates, setTemplates] = useState<any[]>([]);
   const [showSendMessageModal, setShowSendMessageModal] = useState(false);
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>('');
@@ -33,6 +34,23 @@ export const CandidateProfilePage: React.FC<CandidateProfilePageProps> = ({
   const [selectedRequirementId, setSelectedRequirementId] = useState<string>('');
   const [submissionRemarks, setSubmissionRemarks] = useState<string>('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Employment History Management State
+  const [showCompanyModal, setShowCompanyModal] = useState(false);
+  const [editingCompanyIndex, setEditingCompanyIndex] = useState<number | null>(null);
+  const [isSavingHistory, setIsSavingHistory] = useState(false);
+  const [companyFormData, setCompanyFormData] = useState<EmploymentHistoryItem>({
+    company_name: '',
+    designation: '',
+    start_date: '',
+    end_date: '',
+    duration_years: 1.0,
+    duration_months: 12,
+    is_current: false,
+    location: '',
+    description: '',
+    reason_for_leaving: ''
+  });
 
   const fetchCandidateDetail = async () => {
     try {
@@ -249,6 +267,126 @@ export const CandidateProfilePage: React.FC<CandidateProfilePageProps> = ({
     }
   };
 
+  const handleOpenAddCompany = () => {
+    setEditingCompanyIndex(null);
+    setCompanyFormData({
+      company_name: '',
+      designation: '',
+      start_date: '',
+      end_date: '',
+      duration_years: 1.0,
+      duration_months: 12,
+      is_current: false,
+      location: '',
+      description: '',
+      reason_for_leaving: ''
+    });
+    setShowCompanyModal(true);
+  };
+
+  const handleOpenEditCompany = (index: number) => {
+    const item = (candidate?.employment_history || [])[index];
+    if (!item) return;
+    setEditingCompanyIndex(index);
+    setCompanyFormData({
+      company_name: item.company_name || '',
+      designation: item.designation || '',
+      start_date: item.start_date || '',
+      end_date: item.end_date || '',
+      duration_years: item.duration_years ?? 1.0,
+      duration_months: item.duration_months ?? 12,
+      is_current: !!item.is_current,
+      location: item.location || '',
+      description: item.description || '',
+      reason_for_leaving: item.reason_for_leaving || ''
+    });
+    setShowCompanyModal(true);
+  };
+
+  const handleSaveCompanyEntry = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!candidate || !companyFormData.company_name.trim()) {
+      alert('Please enter the company name.');
+      return;
+    }
+
+    try {
+      setIsSavingHistory(true);
+      const currentList = [...(candidate.employment_history || [])];
+      const entry: EmploymentHistoryItem = {
+        ...companyFormData,
+        company_name: companyFormData.company_name.trim(),
+        duration_years: parseFloat(String(companyFormData.duration_years)) || 1.0,
+        duration_months: parseInt(String(companyFormData.duration_months)) || Math.round((parseFloat(String(companyFormData.duration_years)) || 1.0) * 12)
+      };
+
+      if (editingCompanyIndex !== null && editingCompanyIndex >= 0) {
+        currentList[editingCompanyIndex] = entry;
+      } else {
+        currentList.unshift(entry);
+      }
+
+      const res = await fetch(`/api/v1/candidates/${candidateId}/employment-history`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify(currentList)
+      });
+
+      if (!res.ok) {
+        const err = await res.json();
+        alert(err.detail || 'Failed to update employment history.');
+        return;
+      }
+
+      const updated = await res.json();
+      setCandidate(updated);
+      setShowCompanyModal(false);
+    } catch (err) {
+      console.error('Error saving company history:', err);
+      alert('Failed to save company history.');
+    } finally {
+      setIsSavingHistory(false);
+    }
+  };
+
+  const handleDeleteCompanyEntry = async (index: number) => {
+    if (!candidate) return;
+    const item = (candidate.employment_history || [])[index];
+    if (!item) return;
+
+    if (!window.confirm(`Remove "${item.company_name}" from candidate's employment history?`)) return;
+
+    try {
+      setIsSavingHistory(true);
+      const updatedList = (candidate.employment_history || []).filter((_, idx) => idx !== index);
+      const res = await fetch(`/api/v1/candidates/${candidateId}/employment-history`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify(updatedList)
+      });
+
+      if (!res.ok) {
+        const err = await res.json();
+        alert(err.detail || 'Failed to remove employment record.');
+        return;
+      }
+
+      const updated = await res.json();
+      setCandidate(updated);
+    } catch (err) {
+      console.error('Error removing company history:', err);
+      alert('Failed to remove company history.');
+    } finally {
+      setIsSavingHistory(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="py-20 text-center text-slate-400">
@@ -336,7 +474,7 @@ export const CandidateProfilePage: React.FC<CandidateProfilePageProps> = ({
         </div>
       </div>
 
-      {/* 5-Tab Navigation Bar */}
+      {/* 6-Tab Navigation Bar */}
       <div className="flex items-center gap-2 border-b border-slate-800 overflow-x-auto pb-1">
         <button
           onClick={() => setActiveTab('profile')}
@@ -348,6 +486,27 @@ export const CandidateProfilePage: React.FC<CandidateProfilePageProps> = ({
         >
           <User className="w-4 h-4" />
           <span>Personal & Professional</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('employment')}
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-t-lg text-xs font-bold transition border-b-2 ${
+            activeTab === 'employment'
+              ? 'border-brand-500 text-brand-300 bg-slate-900/80'
+              : 'border-transparent text-slate-400 hover:text-slate-200'
+          }`}
+        >
+          <History className="w-4 h-4 text-brand-400" />
+          <span>Employment History & Retention</span>
+          {candidate.stability_rating === 'FREQUENT_CHANGER' ? (
+            <span className="px-1.5 py-0.2 rounded text-[10px] font-extrabold bg-amber-500/20 text-amber-300 border border-amber-500/40">
+              ⚠️ Frequent Changer
+            </span>
+          ) : candidate.stability_rating === 'HIGH_RETENTION' ? (
+            <span className="px-1.5 py-0.2 rounded text-[10px] font-extrabold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
+              🛡️ High Retention
+            </span>
+          ) : null}
         </button>
 
         <button
@@ -398,7 +557,7 @@ export const CandidateProfilePage: React.FC<CandidateProfilePageProps> = ({
           }`}
         >
           <Clock className="w-4 h-4" />
-          <span>Timeline & History</span>
+          <span>Timeline & Audit</span>
         </button>
       </div>
 
@@ -406,6 +565,56 @@ export const CandidateProfilePage: React.FC<CandidateProfilePageProps> = ({
       {activeTab === 'profile' && (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <div className="md:col-span-2 space-y-6">
+            {/* Quick Job Stability Snapshot Banner */}
+            <div className={`p-4 rounded-xl border flex flex-col sm:flex-row sm:items-center justify-between gap-4 ${
+              candidate.stability_rating === 'FREQUENT_CHANGER'
+                ? 'bg-amber-950/20 border-amber-500/40 text-amber-200'
+                : candidate.stability_rating === 'HIGH_RETENTION'
+                ? 'bg-emerald-950/20 border-emerald-500/40 text-emerald-200'
+                : 'bg-slate-900/90 border-slate-800 text-slate-200'
+            }`}>
+              <div className="flex items-start gap-3">
+                <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
+                  candidate.stability_rating === 'FREQUENT_CHANGER'
+                    ? 'bg-amber-500/20 text-amber-400'
+                    : 'bg-emerald-500/20 text-emerald-400'
+                }`}>
+                  {candidate.stability_rating === 'FREQUENT_CHANGER' ? (
+                    <AlertTriangle className="w-5 h-5" />
+                  ) : (
+                    <ShieldCheck className="w-5 h-5" />
+                  )}
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h4 className="text-xs font-extrabold text-white uppercase tracking-wider">
+                      Job Stability & Retention Analysis
+                    </h4>
+                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                      candidate.stability_rating === 'FREQUENT_CHANGER'
+                        ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
+                        : candidate.stability_rating === 'HIGH_RETENTION'
+                        ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
+                        : 'bg-slate-800 text-slate-300 border border-slate-700'
+                    }`}>
+                      {candidate.stability_label || candidate.stability_rating || 'Stable Retention'}
+                    </span>
+                  </div>
+                  <p className="text-xs mt-1 text-slate-300">
+                    <strong>Total Exp:</strong> {candidate.total_experience} yrs • <strong>Previous Companies:</strong> {candidate.companies_count || (candidate.employment_history?.length || 1)} • <strong>Avg Tenure:</strong> {candidate.average_tenure_years || candidate.total_experience} yr/company
+                  </p>
+                </div>
+              </div>
+
+              <button
+                onClick={() => setActiveTab('employment')}
+                className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-white rounded-lg text-xs font-bold border border-slate-700 transition shrink-0 flex items-center gap-1.5"
+              >
+                <History className="w-3.5 h-3.5 text-brand-400" />
+                <span>View Full Employment History</span>
+              </button>
+            </div>
+
             <div className="bg-slate-900/80 border border-slate-800 rounded-xl p-5 space-y-4">
               <h3 className="text-sm font-bold text-white">Professional Experience & Background</h3>
               <div className="grid grid-cols-2 gap-4 text-xs">
@@ -480,6 +689,321 @@ export const CandidateProfilePage: React.FC<CandidateProfilePageProps> = ({
                 </div>
               )}
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Tab: Employment History & Retention Analysis (HR-20 Specification) */}
+      {activeTab === 'employment' && (
+        <div className="space-y-6">
+          {/* HR-20 Summary Headline Banner */}
+          <div className="p-5 bg-gradient-to-r from-slate-900 via-brand-950/40 to-slate-900 border border-brand-500/40 rounded-2xl shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="space-y-1">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="px-2.5 py-0.5 bg-brand-500/20 text-brand-300 text-[11px] font-extrabold rounded-md uppercase tracking-wider border border-brand-500/30">
+                  HR-20 Employment Stability Breakdown
+                </span>
+                {candidate.stability_metrics?.hr_review_required ? (
+                  <span className="px-2.5 py-0.5 bg-amber-500/20 text-amber-300 text-[11px] font-bold rounded-md border border-amber-500/40 flex items-center gap-1">
+                    <AlertTriangle className="w-3.5 h-3.5 text-amber-400" />
+                    HR / Manager Review Recommended
+                  </span>
+                ) : (
+                  <span className="px-2.5 py-0.5 bg-emerald-500/20 text-emerald-300 text-[11px] font-bold rounded-md border border-emerald-500/40 flex items-center gap-1">
+                    <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+                    Standard Career Progression
+                  </span>
+                )}
+              </div>
+
+              {/* Exact HR-20 Headline Format */}
+              <p className="text-base sm:text-lg font-extrabold text-white tracking-tight pt-1">
+                {candidate.stability_metrics?.summary_headline || (
+                  `${candidate.total_experience} years of experience | ${candidate.companies_count || (candidate.employment_history?.length || 1)} companies | Average tenure: ${Math.round((candidate.average_tenure_years || candidate.total_experience) * 12)} months | ${Math.max(0, (candidate.companies_count || candidate.employment_history?.length || 1) - 1)} job changes in ${Math.round(candidate.total_experience) || 1} years`
+                )}
+              </p>
+
+              <p className="text-xs text-slate-400 leading-relaxed">
+                ℹ️ <em>Factual employment record provided as supporting evidence during human interview evaluation without automated bias.</em>
+              </p>
+            </div>
+
+            <button
+              onClick={handleOpenAddCompany}
+              className="flex items-center gap-2 px-4 py-2.5 bg-brand-600 hover:bg-brand-500 text-white rounded-xl text-xs font-bold transition shadow-lg shadow-brand-500/25 shrink-0 hover:scale-105 active:scale-95"
+            >
+              <Plus className="w-4 h-4" />
+              <span>+ Add Previous Company</span>
+            </button>
+          </div>
+
+          {/* Top 4 KPI Metric Cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {/* KPI 1: Total Experience */}
+            <div className="p-4 bg-slate-900/90 border border-slate-800 rounded-xl space-y-1 shadow-sm">
+              <div className="flex items-center justify-between text-slate-400 text-xs">
+                <span className="font-semibold uppercase tracking-wider">Total Experience</span>
+                <Clock className="w-4 h-4 text-brand-400" />
+              </div>
+              <p className="text-2xl font-extrabold text-white">
+                {candidate.total_experience} <span className="text-sm font-semibold text-slate-400">Years</span>
+              </p>
+              <p className="text-[11px] text-slate-400">
+                {candidate.relevant_experience} yrs relevant domain exp
+              </p>
+            </div>
+
+            {/* KPI 2: Number of Companies Worked For */}
+            <div className="p-4 bg-slate-900/90 border border-slate-800 rounded-xl space-y-1 shadow-sm">
+              <div className="flex items-center justify-between text-slate-400 text-xs">
+                <span className="font-semibold uppercase tracking-wider">Companies Worked For</span>
+                <Building className="w-4 h-4 text-sky-400" />
+              </div>
+              <p className="text-2xl font-extrabold text-white">
+                {candidate.companies_count || (candidate.employment_history?.length || 1)} <span className="text-sm font-semibold text-slate-400">Companies</span>
+              </p>
+              <p className="text-[11px] text-slate-400">
+                Total organizations in career history
+              </p>
+            </div>
+
+            {/* KPI 3: Average Duration per Company */}
+            <div className="p-4 bg-slate-900/90 border border-slate-800 rounded-xl space-y-1 shadow-sm">
+              <div className="flex items-center justify-between text-slate-400 text-xs">
+                <span className="font-semibold uppercase tracking-wider">Average Tenure</span>
+                <TrendingUp className="w-4 h-4 text-indigo-400" />
+              </div>
+              <p className="text-2xl font-extrabold text-white">
+                {candidate.stability_metrics?.average_tenure_months ? `${candidate.stability_metrics.average_tenure_months} Mos` : `${Math.round((candidate.average_tenure_years || candidate.total_experience) * 12)} Mos`}
+              </p>
+              <p className="text-[11px] text-slate-400">
+                ~{candidate.average_tenure_years || candidate.total_experience} yrs / company on average
+              </p>
+            </div>
+
+            {/* KPI 4: Job Changes in 3-5 Years */}
+            <div className="p-4 bg-slate-900/90 border border-slate-800 rounded-xl space-y-1 shadow-sm">
+              <div className="flex items-center justify-between text-slate-400 text-xs">
+                <span className="font-semibold uppercase tracking-wider">Recent Job Changes</span>
+                <History className="w-4 h-4 text-amber-400" />
+              </div>
+              <p className="text-2xl font-extrabold text-white">
+                {candidate.stability_metrics?.job_changes_recent_years ?? Math.max(0, (candidate.companies_count || candidate.employment_history?.length || 1) - 1)}{' '}
+                <span className="text-sm font-semibold text-slate-400">Changes</span>
+              </p>
+              <p className="text-[11px] text-slate-400">
+                {candidate.stability_metrics?.job_changes_summary || `Transitions across ${Math.round(candidate.total_experience) || 1} years`}
+              </p>
+            </div>
+          </div>
+
+          {/* Employment Gaps & Career Breaks Section (If any detected) */}
+          {candidate.stability_metrics?.employment_gaps && candidate.stability_metrics.employment_gaps.length > 0 && (
+            <div className="p-5 rounded-xl border bg-amber-950/20 border-amber-500/40 space-y-3">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-bold text-amber-200 flex items-center gap-2">
+                  <Clock className="w-4 h-4 text-amber-400" />
+                  Identified Career Gaps & Employment Breaks ({candidate.stability_metrics.total_gaps_count || candidate.stability_metrics.employment_gaps.length})
+                </h3>
+                <span className="px-2.5 py-0.5 bg-amber-500/20 text-amber-300 text-xs font-bold rounded-full border border-amber-500/30">
+                  Total Gap: {candidate.stability_metrics.total_gap_months || 0} Months
+                </span>
+              </div>
+              <p className="text-xs text-slate-300">
+                The following employment gaps were identified between recorded career tenures for recruiter review:
+              </p>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
+                {candidate.stability_metrics.employment_gaps.map((gap, gIdx) => (
+                  <div key={gIdx} className="p-3 bg-slate-950/80 rounded-lg border border-amber-500/30 flex items-start gap-3">
+                    <div className="w-8 h-8 rounded-lg bg-amber-500/20 text-amber-300 flex items-center justify-center font-bold text-xs shrink-0">
+                      {gap.gap_months}m
+                    </div>
+                    <div className="text-xs space-y-0.5">
+                      <p className="text-white font-bold">
+                        {gap.gap_months} Months Gap ({gap.start_date} → {gap.end_date})
+                      </p>
+                      <p className="text-slate-400 text-[11px]">
+                        Between <span className="text-slate-200 font-semibold">{gap.previous_company || 'Previous Role'}</span> and{' '}
+                        <span className="text-slate-200 font-semibold">{gap.next_company || 'Next Role'}</span>
+                      </p>
+                      {gap.gap_reason && (
+                        <p className="text-amber-300/90 text-[11px] italic">
+                          Candidate Reason: {gap.gap_reason}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Job Stability & Factual HR Review Details */}
+          <div className="p-5 rounded-xl border bg-slate-900/80 border-slate-800 space-y-3">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                <ShieldCheck className="w-4 h-4 text-brand-400" />
+                Factual Employment & Retention Observations
+              </h3>
+              <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold ${
+                candidate.stability_metrics?.hr_review_required
+                  ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
+                  : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
+              }`}>
+                {candidate.stability_label || 'Standard Career Progression'}
+              </span>
+            </div>
+
+            {candidate.stability_metrics?.factual_observations && candidate.stability_metrics.factual_observations.length > 0 ? (
+              <ul className="space-y-1.5 pt-1">
+                {candidate.stability_metrics.factual_observations.map((obs: string, idx: number) => (
+                  <li key={idx} className="text-xs text-slate-300 flex items-start gap-2.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-brand-400 mt-1.5 shrink-0" />
+                    <span>{obs}</span>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="text-xs text-slate-400">
+                Candidate has {candidate.total_experience} years of experience across {candidate.companies_count || 1} companies with an average tenure of {candidate.average_tenure_years || candidate.total_experience} years per organization.
+              </p>
+            )}
+          </div>
+
+          {/* Previous Companies Timeline with Reason for Leaving & Gaps */}
+          <div className="bg-slate-900/80 border border-slate-800 rounded-xl p-6 space-y-5">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                  <Building className="w-4 h-4 text-brand-400" />
+                  Chronological Employment Timeline ({candidate.employment_history?.length || 0} Companies)
+                </h3>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  Complete sequence of joining dates, leaving dates, roles, durations, and reasons for leaving
+                </p>
+              </div>
+
+              <button
+                onClick={handleOpenAddCompany}
+                className="flex items-center gap-2 px-3.5 py-2 bg-brand-600 hover:bg-brand-500 text-white rounded-lg text-xs font-bold transition shadow-md shadow-brand-500/20 shrink-0"
+              >
+                <Plus className="w-4 h-4" />
+                <span>+ Add Previous Company</span>
+              </button>
+            </div>
+
+            {(!candidate.employment_history || candidate.employment_history.length === 0) ? (
+              <div className="p-8 text-center bg-slate-950 rounded-xl border border-slate-800 text-slate-500 text-xs space-y-2">
+                <Building className="w-8 h-8 mx-auto mb-1 opacity-30 text-brand-400" />
+                <p className="text-slate-300 font-semibold">No detailed previous company breakdown recorded yet.</p>
+                <p className="text-slate-500 text-[11px]">Click "+ Add Previous Company" to build out the candidate's career timeline.</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {candidate.employment_history.map((comp: EmploymentHistoryItem, idx: number) => {
+                  const isShort = (comp.duration_years ?? 1) < 1.0 && !comp.is_current;
+                  return (
+                    <div
+                      key={idx}
+                      className={`p-4 rounded-xl border transition bg-slate-950 flex flex-col md:flex-row md:items-center justify-between gap-4 ${
+                        isShort
+                          ? 'border-amber-500/30 bg-amber-950/10'
+                          : 'border-slate-800 hover:border-slate-700'
+                      }`}
+                    >
+                      <div className="flex items-start gap-3">
+                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold text-sm shrink-0 ${
+                          comp.is_current
+                            ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                            : isShort
+                            ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
+                            : 'bg-slate-800 text-slate-300 border border-slate-700'
+                        }`}>
+                          {idx + 1}
+                        </div>
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <h4 className="text-sm font-bold text-white">{comp.company_name}</h4>
+                            {comp.is_current && (
+                              <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
+                                Current Employer
+                              </span>
+                            )}
+                            {isShort && (
+                              <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40 flex items-center gap-1">
+                                <AlertTriangle className="w-3 h-3" /> Short Stint (&lt; 1 yr)
+                              </span>
+                            )}
+                          </div>
+
+                          <p className="text-xs text-brand-300 font-semibold">
+                            {comp.designation || 'Software Engineer'}
+                            {comp.location ? ` • ${comp.location}` : ''}
+                          </p>
+
+                          {/* Reason for Leaving Badge */}
+                          {comp.reason_for_leaving && (
+                            <div className="pt-0.5">
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-medium bg-slate-800/90 text-slate-300 border border-slate-700">
+                                <span className="text-slate-400 font-normal">Reason for Leaving:</span> {comp.reason_for_leaving}
+                              </span>
+                            </div>
+                          )}
+
+                          {comp.description && (
+                            <p className="text-[11px] text-slate-400 mt-1 max-w-xl">
+                              {comp.description}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="flex items-center justify-between md:justify-end gap-4 shrink-0 border-t md:border-t-0 pt-2 md:pt-0 border-slate-800">
+                        <div className="text-right">
+                          <p className="text-xs font-bold text-white">
+                            {comp.duration_years ? `${comp.duration_years} Years` : `${comp.duration_months || 12} Months`}
+                            <span className="text-slate-400 font-normal text-[11px] ml-1">
+                              ({comp.duration_months ? `${comp.duration_months} mos` : `${Math.round((comp.duration_years || 1) * 12)} mos`})
+                            </span>
+                          </p>
+                          <p className="text-[11px] text-slate-400">
+                            <strong>{comp.start_date || '—'}</strong> to <strong>{comp.end_date || (comp.is_current ? 'Present' : '—')}</strong>
+                          </p>
+                        </div>
+
+                        <div className="flex items-center gap-1.5">
+                          <button
+                            onClick={() => handleOpenEditCompany(idx)}
+                            className="p-2 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white rounded-lg border border-slate-700 transition"
+                            title="Edit Company Details"
+                          >
+                            <Edit2 className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            onClick={() => handleDeleteCompanyEntry(idx)}
+                            className="p-2 bg-rose-950/40 hover:bg-rose-900/80 text-rose-300 hover:text-white rounded-lg border border-rose-800/60 transition"
+                            title="Delete Company Entry"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* HR / Interviewer Qualitative Review Guidance Box */}
+          <div className="bg-slate-900/80 border border-slate-800 rounded-xl p-5 space-y-2">
+            <h4 className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-2">
+              <FileText className="w-4 h-4 text-brand-400" />
+              Interviewer & HR Hiring Decision Guide
+            </h4>
+            <p className="text-xs text-slate-300 leading-relaxed">
+              Review previous employment tenures, contract durations, and reasons for leaving during the technical and behavioral interview stages. Ensure to probe on role achievements, growth motivations, and candidate long-term alignment before making the final hiring decision.
+            </p>
           </div>
         </div>
       )}
@@ -1015,6 +1539,206 @@ export const CandidateProfilePage: React.FC<CandidateProfilePageProps> = ({
                 )}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Add / Edit Previous Company Employment Record */}
+      {showCompanyModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 overflow-y-auto">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-lg w-full p-6 shadow-2xl space-y-4 animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-brand-500/20 text-brand-300 flex items-center justify-center">
+                  <Building className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-white">
+                    {editingCompanyIndex !== null ? 'Edit Employment Record' : 'Add Previous Company'}
+                  </h3>
+                  <p className="text-[11px] text-slate-400">Record company name, role, dates, and employment duration</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowCompanyModal(false)}
+                className="text-slate-400 hover:text-white font-bold text-base p-1"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveCompanyEntry} className="space-y-3.5 text-xs">
+              <div>
+                <label className="block font-bold text-slate-300 mb-1">Company / Organization Name *</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Infosys, Wipro, Google, Tech Global"
+                  value={companyFormData.company_name}
+                  onChange={(e) => setCompanyFormData({ ...companyFormData, company_name: e.target.value })}
+                  className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-xl text-white focus:outline-none focus:border-brand-500"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-bold text-slate-300 mb-1">Designation / Role</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Senior Software Engineer"
+                    value={companyFormData.designation || ''}
+                    onChange={(e) => setCompanyFormData({ ...companyFormData, designation: e.target.value })}
+                    className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-xl text-white focus:outline-none focus:border-brand-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-bold text-slate-300 mb-1">Location</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Gurgaon / Remote"
+                    value={companyFormData.location || ''}
+                    onChange={(e) => setCompanyFormData({ ...companyFormData, location: e.target.value })}
+                    className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-xl text-white focus:outline-none focus:border-brand-500"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-bold text-slate-300 mb-1">Start Date</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. 2021-01 or Jan 2021"
+                    value={companyFormData.start_date || ''}
+                    onChange={(e) => setCompanyFormData({ ...companyFormData, start_date: e.target.value })}
+                    className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-xl text-white focus:outline-none focus:border-brand-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-bold text-slate-300 mb-1">End Date</label>
+                  <input
+                    type="text"
+                    disabled={companyFormData.is_current}
+                    placeholder={companyFormData.is_current ? 'Present' : 'e.g. 2022-06 or Jun 2022'}
+                    value={companyFormData.is_current ? 'Present' : (companyFormData.end_date || '')}
+                    onChange={(e) => setCompanyFormData({ ...companyFormData, end_date: e.target.value })}
+                    className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-xl text-white focus:outline-none focus:border-brand-500 disabled:opacity-50"
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 py-1">
+                <input
+                  type="checkbox"
+                  id="is_current_employer"
+                  checked={!!companyFormData.is_current}
+                  onChange={(e) => {
+                    const checked = e.target.checked;
+                    setCompanyFormData({
+                      ...companyFormData,
+                      is_current: checked,
+                      end_date: checked ? 'Present' : ''
+                    });
+                  }}
+                  className="w-4 h-4 rounded bg-slate-950 border-slate-700 text-brand-500"
+                />
+                <label htmlFor="is_current_employer" className="text-slate-300 cursor-pointer font-medium">
+                  This is the candidate's current employer
+                </label>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-bold text-slate-300 mb-1">Duration (Years)</label>
+                  <input
+                    type="number"
+                    step="0.1"
+                    min="0.1"
+                    value={companyFormData.duration_years ?? 1.0}
+                    onChange={(e) => {
+                      const yrs = parseFloat(e.target.value) || 1.0;
+                      setCompanyFormData({
+                        ...companyFormData,
+                        duration_years: yrs,
+                        duration_months: Math.round(yrs * 12)
+                      });
+                    }}
+                    className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-xl text-white focus:outline-none focus:border-brand-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-bold text-slate-300 mb-1">Duration (Months)</label>
+                  <input
+                    type="number"
+                    min="1"
+                    value={companyFormData.duration_months ?? 12}
+                    onChange={(e) => {
+                      const mos = parseInt(e.target.value) || 12;
+                      setCompanyFormData({
+                        ...companyFormData,
+                        duration_months: mos,
+                        duration_years: Math.round((mos / 12) * 10) / 10
+                      });
+                    }}
+                    className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-xl text-white focus:outline-none focus:border-brand-500"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-300 mb-1">
+                  Reason for Leaving (Optional / Provided by Candidate)
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. Career Advancement, Role Completed, Better Compensation, Relocation..."
+                  value={companyFormData.reason_for_leaving || ''}
+                  onChange={(e) => setCompanyFormData({ ...companyFormData, reason_for_leaving: e.target.value })}
+                  className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-xl text-white focus:outline-none focus:border-brand-500"
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-300 mb-1">Role Description / Key Achievements (Optional)</label>
+                <textarea
+                  rows={2}
+                  placeholder="e.g. Led cloud backend infrastructure and integrated high-scale payment microservices..."
+                  value={companyFormData.description || ''}
+                  onChange={(e) => setCompanyFormData({ ...companyFormData, description: e.target.value })}
+                  className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-xl text-white focus:outline-none focus:border-brand-500"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => setShowCompanyModal(false)}
+                  className="px-4 py-2 text-xs font-semibold text-slate-400 hover:text-white"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSavingHistory}
+                  className="flex items-center gap-2 px-5 py-2 bg-brand-600 hover:bg-brand-500 text-white rounded-xl text-xs font-bold transition shadow-lg shadow-brand-500/20 disabled:opacity-50"
+                >
+                  {isSavingHistory ? (
+                    <>
+                      <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                      <span>Saving Record...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Check className="w-3.5 h-3.5" />
+                      <span>Save Company Record</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

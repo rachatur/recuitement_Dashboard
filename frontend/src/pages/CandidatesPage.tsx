@@ -27,6 +27,7 @@ export const CandidatesPage: React.FC<CandidatesPageProps> = ({ onViewCandidateP
   const [skillFilter, setSkillFilter] = useState('');
   const [waEligibleFilter, setWaEligibleFilter] = useState<string>('all');
   const [experienceRangeFilter, setExperienceRangeFilter] = useState<string>('all');
+  const [stabilityFilter, setStabilityFilter] = useState<string>('all');
   
   // Modals
   const [showAddModal, setShowAddModal] = useState(false);
@@ -107,6 +108,7 @@ export const CandidatesPage: React.FC<CandidatesPageProps> = ({ onViewCandidateP
       if (skillFilter) params.append('skill', skillFilter);
       if (waEligibleFilter === 'eligible') params.append('whatsapp_eligible', 'true');
       if (waEligibleFilter === 'ineligible') params.append('whatsapp_eligible', 'false');
+      if (stabilityFilter && stabilityFilter !== 'all') params.append('stability_rating', stabilityFilter);
       
       if (experienceRangeFilter === '0-1') {
         params.append('min_experience', '0');
@@ -230,7 +232,7 @@ export const CandidatesPage: React.FC<CandidatesPageProps> = ({ onViewCandidateP
 
   useEffect(() => {
     fetchCandidates();
-  }, [search, statusFilter, skillFilter, waEligibleFilter, experienceRangeFilter]);
+  }, [search, statusFilter, skillFilter, waEligibleFilter, experienceRangeFilter, stabilityFilter]);
 
   useEffect(() => {
     setSearch(initialSearch);
@@ -641,6 +643,19 @@ export const CandidatesPage: React.FC<CandidatesPageProps> = ({ onViewCandidateP
         </div>
 
         <div className="flex flex-wrap items-center gap-2.5 w-full md:w-auto">
+          {/* Job Stability & Retention filter */}
+          <select
+            value={stabilityFilter}
+            onChange={(e) => setStabilityFilter(e.target.value)}
+            className="px-3 py-2 bg-slate-950 border border-amber-500/30 rounded-lg text-xs text-amber-300 font-semibold focus:outline-none focus:border-amber-500"
+          >
+            <option value="all">All Employment Stability</option>
+            <option value="HIGH_RETENTION">🛡️ Long-Term Retention</option>
+            <option value="STABLE">Standard Career Progression</option>
+            <option value="MODERATE">Moderate Stability</option>
+            <option value="FREQUENT_CHANGER">🔍 HR Review: Frequent Transitions (&lt; 12 mo)</option>
+          </select>
+
           {/* Experience Year-wise filter */}
           <select
             value={experienceRangeFilter}
@@ -753,7 +768,7 @@ export const CandidatesPage: React.FC<CandidatesPageProps> = ({ onViewCandidateP
                 </th>
                 <th className="py-3.5 px-4">Candidate</th>
                 <th className="py-3.5 px-4">Contact & WhatsApp</th>
-                <th className="py-3.5 px-4">Experience & Role</th>
+                <th className="py-3.5 px-4">Exp, Companies & Stability</th>
                 <th className="py-3.5 px-4">Skills</th>
                 <th className="py-3.5 px-4">Outreach Status</th>
                 <th className="py-3.5 px-4">Bench Status</th>
@@ -832,11 +847,32 @@ export const CandidatesPage: React.FC<CandidatesPageProps> = ({ onViewCandidateP
                         </div>
                       </td>
 
-                      {/* Experience & Role */}
+                      {/* Experience, Companies & Retention Stability */}
                       <td className="py-3.5 px-4">
-                        <div>
-                          <p className="text-white font-semibold">{cand.current_designation || 'Software Engineer'}</p>
-                          <p className="text-[11px] text-slate-400">{cand.total_experience} Years Exp • {cand.location || 'Remote'}</p>
+                        <div className="space-y-1">
+                          <p className="text-white font-semibold flex items-center gap-1.5">
+                            {cand.current_designation || 'Software Engineer'}
+                          </p>
+                          <p className="text-[11px] text-slate-300">
+                            <strong className="text-white">{cand.total_experience} yrs</strong> • {cand.companies_count || (cand.employment_history?.length || 1)} {(cand.companies_count || 1) === 1 ? 'co' : 'cos'} • <span className="text-slate-400">Avg {cand.stability_metrics?.average_tenure_months ? `${cand.stability_metrics.average_tenure_months}m` : `${Math.round((cand.average_tenure_years || cand.total_experience) * 12)}m`}/co</span>
+                          </p>
+                          <div className="pt-0.5">
+                            {cand.stability_rating === 'FREQUENT_CHANGER' ? (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40" title="HR Review Recommended: Short average tenures">
+                                <AlertTriangle className="w-3 h-3 text-amber-400" />
+                                HR Review: Frequent Transitions ({cand.companies_count || (cand.employment_history?.length || 1)} cos)
+                              </span>
+                            ) : cand.stability_rating === 'HIGH_RETENTION' ? (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
+                                <ShieldCheck className="w-3 h-3 text-emerald-400" />
+                                Long-Term Retention (Avg {cand.average_tenure_years || cand.total_experience}y)
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-slate-800 text-slate-300 border border-slate-700">
+                                Standard Career Growth • {cand.companies_count || 1} cos
+                              </span>
+                            )}
+                          </div>
                         </div>
                       </td>
 
