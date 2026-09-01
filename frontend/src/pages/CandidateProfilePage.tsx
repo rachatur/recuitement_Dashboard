@@ -627,8 +627,11 @@ export const CandidateProfilePage: React.FC<CandidateProfilePageProps> = ({
                   <span className="text-white font-bold">{candidate.relevant_experience} Years</span>
                 </div>
                 <div>
-                  <span className="text-slate-400 block mb-1">Current Designation</span>
-                  <span className="text-white font-bold">{candidate.current_designation || 'Software Engineer'}</span>
+                  <span className="text-slate-400 block mb-1">Position / Job Title</span>
+                  <span className="text-cyan-300 font-bold flex items-center gap-1">
+                    <Briefcase className="w-3.5 h-3.5 text-cyan-400" />
+                    {candidate.position || candidate.current_designation || 'Software Engineer'}
+                  </span>
                 </div>
                 <div>
                   <span className="text-slate-400 block mb-1">Current Company</span>
@@ -645,14 +648,45 @@ export const CandidateProfilePage: React.FC<CandidateProfilePageProps> = ({
               </div>
             </div>
 
-            <div className="bg-slate-900/80 border border-slate-800 rounded-xl p-5 space-y-3">
-              <h3 className="text-sm font-bold text-white">Skills & Core Competencies</h3>
-              <div className="flex flex-wrap gap-2">
-                {(candidate.skills || []).map((s: string, idx: number) => (
-                  <span key={idx} className="px-3 py-1 bg-slate-800 text-slate-200 text-xs font-semibold rounded-lg border border-slate-700">
-                    {s}
-                  </span>
-                ))}
+            {/* Primary & Secondary Skills Classification */}
+            <div className="bg-slate-900/80 border border-slate-800 rounded-xl p-5 space-y-4">
+              <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                <Layers className="w-4 h-4 text-cyan-400" />
+                Skills & Technical Classification
+              </h3>
+
+              {/* Primary Skills */}
+              <div className="space-y-1.5">
+                <h4 className="text-xs font-bold text-emerald-400 uppercase tracking-wider flex items-center gap-1.5">
+                  ★ Primary Skills (Core Competencies)
+                </h4>
+                <div className="flex flex-wrap gap-2">
+                  {(candidate.primary_skills || candidate.bench_primary_skills || (candidate.skills ? candidate.skills.slice(0, 3) : [])).map((s: string, idx: number) => (
+                    <span key={idx} className="px-3 py-1 bg-emerald-500/10 text-emerald-300 text-xs font-bold rounded-lg border border-emerald-500/30 shadow-sm flex items-center gap-1">
+                      ★ {s}
+                    </span>
+                  ))}
+                  {!(candidate.primary_skills || candidate.bench_primary_skills || candidate.skills)?.length && (
+                    <span className="text-xs text-slate-500 italic">No primary skills listed</span>
+                  )}
+                </div>
+              </div>
+
+              {/* Secondary Skills */}
+              <div className="space-y-1.5 pt-2 border-t border-slate-800">
+                <h4 className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
+                  Secondary Skills (Supporting & Domain)
+                </h4>
+                <div className="flex flex-wrap gap-2">
+                  {(candidate.secondary_skills || candidate.bench_secondary_skills || (candidate.skills ? candidate.skills.slice(3) : [])).map((s: string, idx: number) => (
+                    <span key={idx} className="px-2.5 py-1 bg-slate-800/80 text-slate-300 text-xs font-medium rounded-lg border border-slate-700">
+                      {s}
+                    </span>
+                  ))}
+                  {!(candidate.secondary_skills || candidate.bench_secondary_skills || (candidate.skills && candidate.skills.length > 3)) && (
+                    <span className="text-xs text-slate-500 italic">No secondary skills</span>
+                  )}
+                </div>
               </div>
             </div>
           </div>

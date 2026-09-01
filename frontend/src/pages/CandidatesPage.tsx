@@ -3,14 +3,16 @@ import { apiFetch } from '../api/client';
 import { useAuth } from '../contexts/AuthContext';
 import {
   Candidate, CandidateStatus, WhatsAppConsentStatus,
-  CVExtractionResponse, BulkCVUploadSummaryResponse
+  CVExtractionResponse, BulkCVUploadSummaryResponse,
+  CandidatePositionsSummaryResponse
 } from '../types';
 import {
   Users, UserPlus, Upload, Search, Filter, Download,
   CheckCircle2, XCircle, AlertCircle, Phone, Mail,
   MapPin, Briefcase, Eye, ShieldCheck, ShieldAlert,
   Clock, ExternalLink, RefreshCw, FileText, Check, AlertTriangle, MessageSquare, Trash2,
-  Folder, FolderUp, Layers, Send, Share2, Building, CheckSquare, Square
+  Folder, FolderUp, Layers, Send, Share2, Building, CheckSquare, Square,
+  Sparkles, Award, Tag, ChevronRight
 } from 'lucide-react';
 
 interface CandidatesPageProps {
@@ -22,12 +24,20 @@ export const CandidatesPage: React.FC<CandidatesPageProps> = ({ onViewCandidateP
   const { token, user } = useAuth();
   const [candidates, setCandidates] = useState<Candidate[]>([]);
   const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState('');
+  const [search, setSearch] = useState(initialSearch);
   const [statusFilter, setStatusFilter] = useState('');
   const [skillFilter, setSkillFilter] = useState('');
   const [waEligibleFilter, setWaEligibleFilter] = useState<string>('all');
   const [experienceRangeFilter, setExperienceRangeFilter] = useState<string>('all');
   const [stabilityFilter, setStabilityFilter] = useState<string>('all');
+
+  // Position & Skills Classification Filter States
+  const [positionsSummary, setPositionsSummary] = useState<CandidatePositionsSummaryResponse | null>(null);
+  const [selectedPosition, setSelectedPosition] = useState<string>('all');
+  const [primarySkillFilter, setPrimarySkillFilter] = useState<string>('');
+  const [secondarySkillFilter, setSecondarySkillFilter] = useState<string>('');
+  const [locationFilter, setLocationFilter] = useState<string>('all');
+  const [benchFilter, setBenchFilter] = useState<string>('all');
   
   // Modals
   const [showAddModal, setShowAddModal] = useState(false);
@@ -67,7 +77,10 @@ export const CandidatesPage: React.FC<CandidatesPageProps> = ({ onViewCandidateP
     relevant_experience: 0,
     current_company: '',
     current_designation: '',
+    position: '',
     skills: [],
+    primary_skills: [],
+    secondary_skills: [],
     education: '',
     highest_qualification: '',
     notice_period: '30 Days',
@@ -98,6 +111,20 @@ export const CandidatesPage: React.FC<CandidatesPageProps> = ({ onViewCandidateP
   const bulkFileInputRef = useRef<HTMLInputElement>(null);
   const bulkFolderInputRef = useRef<HTMLInputElement>(null);
 
+  const fetchPositionsSummary = async () => {
+    try {
+      const res = await fetch('/api/v1/candidates/positions-summary', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setPositionsSummary(data);
+      }
+    } catch (err) {
+      console.error('Failed to fetch candidate positions summary:', err);
+    }
+  };
+
   const fetchCandidates = async () => {
     try {
       setLoading(true);
@@ -106,6 +133,11 @@ export const CandidatesPage: React.FC<CandidatesPageProps> = ({ onViewCandidateP
       if (search) params.append('search', search);
       if (statusFilter) params.append('status', statusFilter);
       if (skillFilter) params.append('skill', skillFilter);
+      if (selectedPosition && selectedPosition !== 'all') params.append('position', selectedPosition);
+      if (primarySkillFilter && primarySkillFilter !== 'all') params.append('primary_skill', primarySkillFilter);
+      if (secondarySkillFilter && secondarySkillFilter !== 'all') params.append('secondary_skill', secondarySkillFilter);
+      if (locationFilter && locationFilter !== 'all') params.append('location', locationFilter);
+      if (benchFilter && benchFilter !== 'all') params.append('bench_status', benchFilter);
       if (waEligibleFilter === 'eligible') params.append('whatsapp_eligible', 'true');
       if (waEligibleFilter === 'ineligible') params.append('whatsapp_eligible', 'false');
       if (stabilityFilter && stabilityFilter !== 'all') params.append('stability_rating', stabilityFilter);
@@ -142,6 +174,15 @@ export const CandidatesPage: React.FC<CandidatesPageProps> = ({ onViewCandidateP
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    fetchCandidates();
+    fetchPositionsSummary();
+  }, [
+    search, statusFilter, skillFilter, selectedPosition, primarySkillFilter,
+    secondarySkillFilter, locationFilter, benchFilter, waEligibleFilter,
+    experienceRangeFilter, stabilityFilter
+  ]);
 
   const fetchRequirements = async () => {
     try {
@@ -230,14 +271,6 @@ export const CandidatesPage: React.FC<CandidatesPageProps> = ({ onViewCandidateP
     }
   };
 
-  useEffect(() => {
-    fetchCandidates();
-  }, [search, statusFilter, skillFilter, waEligibleFilter, experienceRangeFilter, stabilityFilter]);
-
-  useEffect(() => {
-    setSearch(initialSearch);
-  }, [initialSearch]);
-
   // Single CV Upload & Intelligent Extraction
   const handleSingleCVUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -263,7 +296,7 @@ export const CandidatesPage: React.FC<CandidatesPageProps> = ({ onViewCandidateP
       const extracted: CVExtractionResponse = await res.json();
       setExtractedInfo(extracted);
 
-      // Populate form data with extracted fields
+      // Populate form data with extracted fields including exact position & primary/secondary skills
       setFormData({
         first_name: extracted.first_name || '',
         last_name: extracted.last_name || '',
@@ -277,8 +310,11 @@ export const CandidatesPage: React.FC<CandidatesPageProps> = ({ onViewCandidateP
         total_experience: extracted.total_experience || 0,
         relevant_experience: extracted.relevant_experience || 0,
         current_company: extracted.current_company || '',
-        current_designation: extracted.current_designation || '',
+        current_designation: extracted.position || extracted.current_designation || '',
+        position: extracted.position || extracted.current_designation || '',
         skills: extracted.skills || [],
+        primary_skills: extracted.primary_skills || [],
+        secondary_skills: extracted.secondary_skills || [],
         education: extracted.education || '',
         highest_qualification: extracted.highest_qualification || '',
         notice_period: extracted.notice_period || '30 Days',
@@ -308,7 +344,13 @@ export const CandidatesPage: React.FC<CandidatesPageProps> = ({ onViewCandidateP
         relevant_experience: parseFloat(formData.relevant_experience) || 0,
         current_ctc: formData.current_ctc ? parseFloat(formData.current_ctc) : null,
         expected_ctc: formData.expected_ctc ? parseFloat(formData.expected_ctc) : null,
-        skills: Array.isArray(formData.skills) ? formData.skills : formData.skills.split(',').map((s: string) => s.trim()).filter(Boolean)
+        current_designation: formData.position || formData.current_designation,
+        position: formData.position || formData.current_designation,
+        skills: Array.isArray(formData.skills) ? formData.skills : (typeof formData.skills === 'string' ? formData.skills.split(',').map((s: string) => s.trim()).filter(Boolean) : []),
+        primary_skills: Array.isArray(formData.primary_skills) ? formData.primary_skills : (typeof formData.primary_skills === 'string' ? formData.primary_skills.split(',').map((s: string) => s.trim()).filter(Boolean) : []),
+        secondary_skills: Array.isArray(formData.secondary_skills) ? formData.secondary_skills : (typeof formData.secondary_skills === 'string' ? formData.secondary_skills.split(',').map((s: string) => s.trim()).filter(Boolean) : []),
+        bench_primary_skills: Array.isArray(formData.primary_skills) ? formData.primary_skills : [],
+        bench_secondary_skills: Array.isArray(formData.secondary_skills) ? formData.secondary_skills : []
       };
 
       const res = await apiFetch('/api/v1/candidates', {
@@ -329,6 +371,7 @@ export const CandidatesPage: React.FC<CandidatesPageProps> = ({ onViewCandidateP
       setShowAddModal(false);
       setExtractedInfo(null);
       fetchCandidates();
+      fetchPositionsSummary();
     } catch (err) {
       console.error('Save error:', err);
       alert('Failed to save candidate.');
@@ -558,11 +601,11 @@ export const CandidatesPage: React.FC<CandidatesPageProps> = ({ onViewCandidateP
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-extrabold text-white flex items-center gap-2.5">
-            <Users className="w-7 h-7 text-brand-400" />
+            <Users className="w-7 h-7 text-cyan-400" />
             Candidates & Talent Pool
           </h1>
           <p className="text-sm text-slate-400">
-            Intelligent resume extraction, compliance-ready WhatsApp outreach, and candidate lifecycle management.
+            Intelligent resume extraction, exact position identification, primary/secondary skills classification, and WhatsApp outreach.
           </p>
         </div>
 
@@ -573,7 +616,7 @@ export const CandidatesPage: React.FC<CandidatesPageProps> = ({ onViewCandidateP
               setBulkSummary(null);
               setShowBulkModal(true);
             }}
-            className="flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-bold bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition shadow-sm"
+            className="flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition shadow-sm"
           >
             <Upload className="w-4 h-4 text-slate-300" />
             <span>Bulk Upload CVs</span>
@@ -596,7 +639,10 @@ export const CandidatesPage: React.FC<CandidatesPageProps> = ({ onViewCandidateP
                 relevant_experience: 0,
                 current_company: '',
                 current_designation: '',
+                position: '',
                 skills: [],
+                primary_skills: [],
+                secondary_skills: [],
                 education: '',
                 highest_qualification: '',
                 notice_period: '30 Days',
@@ -611,7 +657,7 @@ export const CandidatesPage: React.FC<CandidatesPageProps> = ({ onViewCandidateP
               });
               setShowAddModal(true);
             }}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold bg-gradient-to-r from-brand-600 to-sky-500 hover:from-brand-500 hover:to-sky-400 text-white shadow-lg shadow-brand-500/20 transition"
+            className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold bg-gradient-to-r from-cyan-600 to-indigo-600 hover:from-cyan-500 hover:to-indigo-500 text-white shadow-lg shadow-indigo-600/20 transition"
           >
             <UserPlus className="w-4 h-4" />
             <span>Add Candidate</span>
@@ -619,48 +665,127 @@ export const CandidatesPage: React.FC<CandidatesPageProps> = ({ onViewCandidateP
         </div>
       </div>
 
-      {/* Filter & Search Bar */}
-      <div className="bg-slate-900/80 border border-slate-800 rounded-xl p-4 flex flex-col md:flex-row items-center justify-between gap-4">
-        <div className="flex items-center gap-3 w-full md:w-auto flex-1">
-          <div className="relative flex-1">
+      {/* 3. Position-Wise Candidate View Summary Cards */}
+      <div className="bg-slate-900/90 p-4 rounded-2xl border border-slate-800/80 shadow-lg space-y-3">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-800/60 pb-2.5">
+          <div className="flex items-center gap-2">
+            <Briefcase className="w-4 h-4 text-cyan-400" />
+            <h2 className="text-xs font-bold uppercase tracking-wider text-slate-200">
+              Position-Wise Talent Breakdown ({positionsSummary?.total_candidates || candidates.length} Candidates)
+            </h2>
+          </div>
+          <span className="text-[11px] text-slate-400">
+            Select a position card below to filter candidates instantly
+          </span>
+        </div>
+
+        <div className="flex items-center gap-2.5 overflow-x-auto pb-1.5 scrollbar-thin">
+          {/* All Positions Card */}
+          <button
+            onClick={() => setSelectedPosition('all')}
+            className={`px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 shrink-0 ${
+              selectedPosition === 'all'
+                ? 'bg-cyan-600 text-white shadow-lg shadow-cyan-600/30 ring-1 ring-cyan-400'
+                : 'bg-slate-950/80 text-slate-300 border border-slate-800 hover:border-slate-700 hover:bg-slate-900'
+            }`}
+          >
+            <Users className="w-3.5 h-3.5 text-cyan-300" />
+            <span>All Positions</span>
+            <span className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold ${selectedPosition === 'all' ? 'bg-white/20 text-white' : 'bg-slate-800 text-cyan-300 border border-cyan-500/20'}`}>
+              {positionsSummary?.total_candidates || candidates.length}
+            </span>
+          </button>
+
+          {/* Dynamically Extracted Positions */}
+          {(positionsSummary?.positions || []).map((posGroup) => {
+            const isSelected = selectedPosition.toLowerCase() === posGroup.position.toLowerCase();
+            return (
+              <button
+                key={posGroup.position}
+                onClick={() => setSelectedPosition(isSelected ? 'all' : posGroup.position)}
+                className={`px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 shrink-0 ${
+                  isSelected
+                    ? 'bg-gradient-to-r from-cyan-600 to-indigo-600 text-white shadow-lg shadow-indigo-600/30 ring-1 ring-cyan-400'
+                    : 'bg-slate-950/80 text-slate-300 border border-slate-800 hover:border-cyan-500/50 hover:bg-slate-900'
+                }`}
+              >
+                <Briefcase className="w-3.5 h-3.5 text-cyan-400" />
+                <span className="truncate max-w-[200px]">{posGroup.position}</span>
+                <span className={`px-2 py-0.5 rounded-full text-[10px] font-black ${isSelected ? 'bg-white/20 text-white' : 'bg-slate-800 text-cyan-300 border border-cyan-500/30'}`}>
+                  {posGroup.count}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* 4. Advanced Search & Multi-Filter Toolbar */}
+      <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-4 space-y-3.5 shadow-md">
+        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-3">
+          {/* Main Search Bar */}
+          <div className="relative md:col-span-2">
             <Search className="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
             <input
               type="text"
-              placeholder="Search candidate by name, phone, skills, designation, experience (e.g. 5 yrs), company..."
+              placeholder="Search candidate by name, phone, skills, designation, company, code..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-9 pr-4 py-2 bg-slate-950 border border-slate-800 rounded-lg text-xs text-white placeholder-slate-500 focus:outline-none focus:border-brand-500"
+              className="w-full pl-9 pr-4 py-2 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500 transition"
             />
+            {search && (
+              <button
+                onClick={() => setSearch('')}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 text-xs"
+              >
+                ✕
+              </button>
+            )}
           </div>
 
-          <input
-            type="text"
-            placeholder="Filter by Skill..."
-            value={skillFilter}
-            onChange={(e) => setSkillFilter(e.target.value)}
-            className="w-36 px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-xs text-white placeholder-slate-500 focus:outline-none focus:border-brand-500 hidden sm:block"
-          />
+          {/* Filter by Position Select */}
+          <div>
+            <select
+              value={selectedPosition}
+              onChange={(e) => setSelectedPosition(e.target.value)}
+              className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-xs text-cyan-300 font-semibold focus:outline-none focus:border-cyan-500"
+            >
+              <option value="all">All Positions</option>
+              {(positionsSummary?.positions || []).map((p) => (
+                <option key={p.position} value={p.position}>
+                  {p.position} ({p.count})
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Filter by Primary Skills */}
+          <div>
+            <input
+              type="text"
+              placeholder="Filter Primary Skill (e.g. Oracle, Java)..."
+              value={primarySkillFilter}
+              onChange={(e) => setPrimarySkillFilter(e.target.value)}
+              className="w-full px-3 py-2 bg-slate-950 border border-cyan-500/30 rounded-xl text-xs text-cyan-300 placeholder-slate-500 focus:outline-none focus:border-cyan-500 font-medium"
+            />
+          </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2.5 w-full md:w-auto">
-          {/* Job Stability & Retention filter */}
-          <select
-            value={stabilityFilter}
-            onChange={(e) => setStabilityFilter(e.target.value)}
-            className="px-3 py-2 bg-slate-950 border border-amber-500/30 rounded-lg text-xs text-amber-300 font-semibold focus:outline-none focus:border-amber-500"
-          >
-            <option value="all">All Employment Stability</option>
-            <option value="HIGH_RETENTION">🛡️ Long-Term Retention</option>
-            <option value="STABLE">Standard Career Progression</option>
-            <option value="MODERATE">Moderate Stability</option>
-            <option value="FREQUENT_CHANGER">🔍 HR Review: Frequent Transitions (&lt; 12 mo)</option>
-          </select>
+        <div className="flex flex-wrap items-center gap-2.5 pt-1 border-t border-slate-800/80">
+          {/* Secondary Skills filter */}
+          <input
+            type="text"
+            placeholder="Secondary Skill (e.g. Reporting, Support)..."
+            value={secondarySkillFilter}
+            onChange={(e) => setSecondarySkillFilter(e.target.value)}
+            className="w-48 px-3 py-1.5 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-300 placeholder-slate-500 focus:outline-none focus:border-cyan-500"
+          />
 
-          {/* Experience Year-wise filter */}
+          {/* Experience filter */}
           <select
             value={experienceRangeFilter}
             onChange={(e) => setExperienceRangeFilter(e.target.value)}
-            className="px-3 py-2 bg-slate-950 border border-brand-500/30 rounded-lg text-xs text-brand-300 font-medium focus:outline-none focus:border-brand-500"
+            className="px-3 py-1.5 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-300 font-medium focus:outline-none focus:border-cyan-500"
           >
             <option value="all">All Experience (Years)</option>
             <option value="0-1">0 - 1 Years (Fresher)</option>
@@ -671,13 +796,42 @@ export const CandidatesPage: React.FC<CandidatesPageProps> = ({ onViewCandidateP
             <option value="12+">12+ Years (Principal / Exec)</option>
           </select>
 
-          {/* Candidate Status filter */}
+          {/* Location filter */}
+          <select
+            value={locationFilter}
+            onChange={(e) => setLocationFilter(e.target.value)}
+            className="px-3 py-1.5 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-300 focus:outline-none focus:border-cyan-500"
+          >
+            <option value="all">All Locations</option>
+            <option value="Bangalore">Bangalore</option>
+            <option value="Pune">Pune</option>
+            <option value="Hyderabad">Hyderabad</option>
+            <option value="Mumbai">Mumbai</option>
+            <option value="Delhi">Delhi / NCR</option>
+            <option value="Chennai">Chennai</option>
+            <option value="Remote">Remote</option>
+          </select>
+
+          {/* Availability / Bench Status */}
+          <select
+            value={benchFilter}
+            onChange={(e) => setBenchFilter(e.target.value)}
+            className="px-3 py-1.5 bg-slate-950 border border-emerald-500/30 rounded-xl text-xs text-emerald-300 font-medium focus:outline-none focus:border-emerald-500"
+          >
+            <option value="all">All Bench / Pool</option>
+            <option value="AVAILABLE">🟢 Available on Bench</option>
+            <option value="ALLOCATED">Allocated</option>
+            <option value="TENTATIVE">Tentative</option>
+            <option value="NOT_ON_BENCH">Regular Talent Pool</option>
+          </select>
+
+          {/* Lifecycle Status filter */}
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
-            className="px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-xs text-slate-300 focus:outline-none focus:border-brand-500"
+            className="px-3 py-1.5 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-300 focus:outline-none focus:border-cyan-500"
           >
-            <option value="">All Lifecycle Statuses</option>
+            <option value="">All Statuses</option>
             <option value="RECEIVED">Received</option>
             <option value="SCREENED">Screened</option>
             <option value="SHORTLISTED">Shortlisted</option>
@@ -690,30 +844,50 @@ export const CandidatesPage: React.FC<CandidatesPageProps> = ({ onViewCandidateP
             <option value="ON_HOLD">On Hold</option>
           </select>
 
-          {/* WhatsApp Outreach Eligibility filter */}
+          {/* Stability filter */}
           <select
-            value={waEligibleFilter}
-            onChange={(e) => setWaEligibleFilter(e.target.value)}
-            className="px-3 py-2 bg-slate-950 border border-emerald-500/30 rounded-lg text-xs text-emerald-300 font-medium focus:outline-none focus:border-emerald-500"
+            value={stabilityFilter}
+            onChange={(e) => setStabilityFilter(e.target.value)}
+            className="px-3 py-1.5 bg-slate-950 border border-amber-500/30 rounded-xl text-xs text-amber-300 font-semibold focus:outline-none focus:border-amber-500"
           >
-            <option value="all">All WhatsApp</option>
-            <option value="eligible">WhatsApp Ready</option>
-            <option value="ineligible">Consent Required</option>
+            <option value="all">All Retention Stability</option>
+            <option value="HIGH_RETENTION">🛡️ Long-Term Retention</option>
+            <option value="STABLE">Standard Progression</option>
+            <option value="FREQUENT_CHANGER">🔍 HR Review Needed</option>
           </select>
+
+          {(selectedPosition !== 'all' || primarySkillFilter || secondarySkillFilter || locationFilter !== 'all' || benchFilter !== 'all' || statusFilter || search) && (
+            <button
+              onClick={() => {
+                setSelectedPosition('all');
+                setPrimarySkillFilter('');
+                setSecondarySkillFilter('');
+                setLocationFilter('all');
+                setBenchFilter('all');
+                setStatusFilter('');
+                setSearch('');
+                setExperienceRangeFilter('all');
+                setStabilityFilter('all');
+              }}
+              className="px-3 py-1.5 text-xs text-rose-400 hover:text-rose-300 hover:bg-rose-950/30 rounded-xl transition"
+            >
+              Reset Filters
+            </button>
+          )}
         </div>
       </div>
 
       {/* Floating / Top Batch Action Bar */}
       {selectedCandidateIds.length > 0 && (
-        <div className="bg-gradient-to-r from-brand-900/90 via-slate-900/95 to-slate-900/90 border border-brand-500/50 rounded-2xl p-4 shadow-2xl flex flex-wrap items-center justify-between gap-4 animate-in fade-in slide-in-from-top-3 duration-200">
+        <div className="bg-gradient-to-r from-cyan-950/90 via-slate-900/95 to-indigo-950/90 border border-cyan-500/50 rounded-2xl p-4 shadow-2xl flex flex-wrap items-center justify-between gap-4 animate-in fade-in slide-in-from-top-3 duration-200">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-brand-500/20 text-brand-300 border border-brand-500/40 flex items-center justify-center font-extrabold text-sm shadow-inner">
+            <div className="w-10 h-10 rounded-xl bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 flex items-center justify-center font-extrabold text-sm shadow-inner">
               {selectedCandidateIds.length}
             </div>
             <div>
               <p className="text-sm font-bold text-white flex items-center gap-2">
                 {selectedCandidateIds.length} Candidate{selectedCandidateIds.length > 1 ? 's' : ''} Selected
-                <span className="px-2 py-0.5 bg-brand-500/20 text-brand-300 text-[10px] font-bold rounded-full border border-brand-500/30">
+                <span className="px-2 py-0.5 bg-cyan-500/20 text-cyan-300 text-[10px] font-bold rounded-full border border-cyan-500/30">
                   Ready for Action
                 </span>
               </p>
@@ -727,7 +901,7 @@ export const CandidatesPage: React.FC<CandidatesPageProps> = ({ onViewCandidateP
             {/* Submit to Client Requirement */}
             <button
               onClick={() => handleOpenSubmitModal()}
-              className="flex items-center gap-2 px-4 py-2.5 bg-brand-600 hover:bg-brand-500 text-white rounded-xl text-xs font-bold transition shadow-lg shadow-brand-500/30 hover:scale-105 active:scale-95"
+              className="flex items-center gap-2 px-4 py-2.5 bg-cyan-600 hover:bg-cyan-500 text-white rounded-xl text-xs font-bold transition shadow-lg shadow-cyan-500/30 hover:scale-105 active:scale-95"
             >
               <Share2 className="w-4 h-4" />
               <span>Submit to Client</span>
@@ -753,7 +927,7 @@ export const CandidatesPage: React.FC<CandidatesPageProps> = ({ onViewCandidateP
       )}
 
       {/* Candidate List Table */}
-      <div className="bg-slate-900/80 border border-slate-800 rounded-xl overflow-hidden shadow-xl">
+      <div className="bg-slate-900/80 border border-slate-800 rounded-2xl overflow-hidden shadow-xl">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs text-slate-300">
             <thead className="bg-slate-950/80 text-slate-400 font-bold uppercase tracking-wider border-b border-slate-800 text-[11px]">
@@ -763,14 +937,14 @@ export const CandidatesPage: React.FC<CandidatesPageProps> = ({ onViewCandidateP
                     type="checkbox"
                     checked={selectedCandidateIds.length === candidates.length && candidates.length > 0}
                     onChange={toggleSelectAll}
-                    className="w-4 h-4 rounded border-slate-700 bg-slate-900 text-brand-600 focus:ring-brand-500 cursor-pointer"
+                    className="w-4 h-4 rounded border-slate-700 bg-slate-900 text-cyan-600 focus:ring-cyan-500 cursor-pointer"
                   />
                 </th>
-                <th className="py-3.5 px-4">Candidate</th>
-                <th className="py-3.5 px-4">Contact & WhatsApp</th>
-                <th className="py-3.5 px-4">Exp, Companies & Stability</th>
-                <th className="py-3.5 px-4">Skills</th>
-                <th className="py-3.5 px-4">Outreach Status</th>
+                <th className="py-3.5 px-4">Candidate & CV</th>
+                <th className="py-3.5 px-4">Extracted Position & Role</th>
+                <th className="py-3.5 px-4">Primary Skills (Core)</th>
+                <th className="py-3.5 px-4">Secondary Skills</th>
+                <th className="py-3.5 px-4">Experience & Stability</th>
                 <th className="py-3.5 px-4">Bench Status</th>
                 <th className="py-3.5 px-4 text-right">Actions</th>
               </tr>
@@ -779,29 +953,29 @@ export const CandidatesPage: React.FC<CandidatesPageProps> = ({ onViewCandidateP
               {loading ? (
                 <tr>
                   <td colSpan={8} className="py-12 text-center text-slate-500">
-                    <RefreshCw className="w-6 h-6 animate-spin mx-auto mb-2 text-brand-400" />
-                    Loading candidates...
+                    <RefreshCw className="w-6 h-6 animate-spin mx-auto mb-2 text-cyan-400" />
+                    Loading talent pool & positions...
                   </td>
                 </tr>
               ) : candidates.length === 0 ? (
                 <tr>
                   <td colSpan={8} className="py-12 text-center text-slate-500">
                     <Users className="w-8 h-8 mx-auto mb-2 opacity-30" />
-                    No candidates found matching your criteria.
+                    No candidates found matching your position or skills criteria.
                   </td>
                 </tr>
               ) : (
                 candidates.map((cand) => {
-                  const isEligible = cand.whatsapp_eligibility?.is_eligible;
-                  const consentSt = cand.whatsapp_consent_status;
-                  const isOptedOut = cand.whatsapp_opt_out_status;
                   const isChecked = selectedCandidateIds.includes(cand.id);
+                  const exactPosition = cand.position || cand.current_designation || 'Software Engineer';
+                  const primSkills = cand.primary_skills || cand.bench_primary_skills || (cand.skills ? cand.skills.slice(0, 3) : []);
+                  const secSkills = cand.secondary_skills || cand.bench_secondary_skills || (cand.skills ? cand.skills.slice(3) : []);
 
                   return (
                     <tr
                       key={cand.id}
                       className={`hover:bg-slate-800/40 transition ${
-                        isChecked ? 'bg-brand-950/20 border-l-2 border-brand-500' : ''
+                        isChecked ? 'bg-cyan-950/20 border-l-2 border-cyan-500' : ''
                       }`}
                     >
                       {/* Checkbox Column */}
@@ -810,116 +984,126 @@ export const CandidatesPage: React.FC<CandidatesPageProps> = ({ onViewCandidateP
                           type="checkbox"
                           checked={isChecked}
                           onChange={() => toggleSelectCandidate(cand.id)}
-                          className="w-4 h-4 rounded border-slate-700 bg-slate-900 text-brand-600 focus:ring-brand-500 cursor-pointer"
+                          className="w-4 h-4 rounded border-slate-700 bg-slate-900 text-cyan-600 focus:ring-cyan-500 cursor-pointer"
                         />
                       </td>
 
-                      {/* Candidate Column */}
+                      {/* Candidate & CV Column */}
                       <td className="py-3.5 px-4">
                         <div className="flex items-center gap-3">
-                          <div className="w-9 h-9 rounded-full bg-brand-500/10 border border-brand-500/30 flex items-center justify-center text-brand-300 font-bold shrink-0">
+                          <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-cyan-600 to-indigo-600 flex items-center justify-center text-white font-bold text-xs shrink-0 shadow-md">
                             {cand.first_name?.[0] || 'C'}
                           </div>
-                          <div>
-                            <button
-                              onClick={() => onViewCandidateProfile && onViewCandidateProfile(cand.id)}
-                              className="font-bold text-white hover:text-brand-300 transition text-left flex items-center gap-1.5"
-                            >
-                              {cand.first_name} {cand.last_name}
-                              <span className="text-[10px] font-normal text-slate-400">({cand.candidate_code})</span>
-                            </button>
-                            <p className="text-[11px] text-slate-400">{cand.current_company || 'Independent Candidate'}</p>
-                          </div>
-                        </div>
-                      </td>
-
-                      {/* Contact & WhatsApp */}
-                      <td className="py-3.5 px-4">
-                        <div className="space-y-1">
-                          <div className="flex items-center gap-1.5 text-slate-300">
-                            <Mail className="w-3.5 h-3.5 text-slate-500 shrink-0" />
-                            <span className="truncate max-w-[170px]">{cand.email}</span>
-                          </div>
-                          <div className="flex items-center gap-1.5 text-slate-300">
-                            <Phone className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                            <span className="font-semibold text-slate-200">{cand.whatsapp_number || cand.phone || '—'}</span>
-                          </div>
-                        </div>
-                      </td>
-
-                      {/* Experience, Companies & Retention Stability */}
-                      <td className="py-3.5 px-4">
-                        <div className="space-y-1">
-                          <p className="text-white font-semibold flex items-center gap-1.5">
-                            {cand.current_designation || 'Software Engineer'}
-                          </p>
-                          <p className="text-[11px] text-slate-300">
-                            <strong className="text-white">{cand.total_experience} yrs</strong> • {cand.companies_count || (cand.employment_history?.length || 1)} {(cand.companies_count || 1) === 1 ? 'co' : 'cos'} • <span className="text-slate-400">Avg {cand.stability_metrics?.average_tenure_months ? `${cand.stability_metrics.average_tenure_months}m` : `${Math.round((cand.average_tenure_years || cand.total_experience) * 12)}m`}/co</span>
-                          </p>
-                          <div className="pt-0.5">
-                            {cand.stability_rating === 'FREQUENT_CHANGER' ? (
-                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40" title="HR Review Recommended: Short average tenures">
-                                <AlertTriangle className="w-3 h-3 text-amber-400" />
-                                HR Review: Frequent Transitions ({cand.companies_count || (cand.employment_history?.length || 1)} cos)
+                          <div className="space-y-0.5">
+                            <div className="flex items-center gap-1.5">
+                              <button
+                                onClick={() => onViewCandidateProfile && onViewCandidateProfile(cand.id)}
+                                className="font-bold text-white hover:text-cyan-300 transition text-left flex items-center gap-1"
+                              >
+                                {cand.first_name} {cand.last_name}
+                              </button>
+                              <span className="text-[10px] font-mono px-1 py-0.2 bg-slate-950 text-slate-400 rounded border border-slate-800">
+                                {cand.candidate_code}
                               </span>
-                            ) : cand.stability_rating === 'HIGH_RETENTION' ? (
-                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
-                                <ShieldCheck className="w-3 h-3 text-emerald-400" />
-                                Long-Term Retention (Avg {cand.average_tenure_years || cand.total_experience}y)
-                              </span>
-                            ) : (
-                              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-slate-800 text-slate-300 border border-slate-700">
-                                Standard Career Growth • {cand.companies_count || 1} cos
-                              </span>
+                            </div>
+                            <div className="flex flex-wrap items-center gap-2 text-[11px] text-slate-400">
+                              <span>{cand.email}</span>
+                              {cand.location && <span>• {cand.location}</span>}
+                            </div>
+                            {cand.current_company && (
+                              <p className="text-[10px] text-slate-400 flex items-center gap-1">
+                                <Building className="w-3 h-3 text-slate-500" />
+                                {cand.current_company}
+                              </p>
                             )}
                           </div>
                         </div>
                       </td>
 
-                      {/* Skills */}
+                      {/* 1. Exact Extracted Position Column */}
+                      <td className="py-3.5 px-4">
+                        <div className="space-y-1">
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-black bg-cyan-500/10 text-cyan-300 border border-cyan-500/30 shadow-sm">
+                            <Briefcase className="w-3.5 h-3.5 text-cyan-400" />
+                            {exactPosition}
+                          </span>
+                          <p className="text-[10px] text-slate-400">
+                            Notice: <strong className="text-slate-300">{cand.notice_period || '30 Days'}</strong>
+                          </p>
+                        </div>
+                      </td>
+
+                      {/* 2. Primary Skills Column */}
                       <td className="py-3.5 px-4">
                         <div className="flex flex-wrap gap-1 max-w-[200px]">
-                          {(cand.skills || []).slice(0, 3).map((s: string, idx: number) => (
-                            <span key={idx} className="px-1.5 py-0.5 bg-slate-800 text-slate-300 text-[10px] rounded border border-slate-700 font-medium">
+                          {primSkills.slice(0, 4).map((s: string, idx: number) => (
+                            <span
+                              key={idx}
+                              className="px-2 py-0.5 bg-emerald-500/10 text-emerald-300 border border-emerald-500/30 text-[10px] rounded-md font-bold flex items-center gap-0.5"
+                            >
+                              ★ {s}
+                            </span>
+                          ))}
+                          {primSkills.length > 4 && (
+                            <span className="px-1.5 py-0.5 text-emerald-400 text-[10px] font-semibold">
+                              +{primSkills.length - 4}
+                            </span>
+                          )}
+                          {primSkills.length === 0 && (
+                            <span className="text-[10px] text-slate-500 italic">No primary skills</span>
+                          )}
+                        </div>
+                      </td>
+
+                      {/* 2. Secondary Skills Column */}
+                      <td className="py-3.5 px-4">
+                        <div className="flex flex-wrap gap-1 max-w-[200px]">
+                          {secSkills.slice(0, 3).map((s: string, idx: number) => (
+                            <span
+                              key={idx}
+                              className="px-1.5 py-0.5 bg-slate-800/80 text-slate-300 border border-slate-700 text-[10px] rounded-md font-medium"
+                            >
                               {s}
                             </span>
                           ))}
-                          {(cand.skills || []).length > 3 && (
-                            <span className="px-1 py-0.5 text-slate-500 text-[10px]">
-                              +{(cand.skills || []).length - 3}
+                          {secSkills.length > 3 && (
+                            <span className="px-1.5 py-0.5 text-slate-400 text-[10px]">
+                              +{secSkills.length - 3}
+                            </span>
+                          )}
+                          {secSkills.length === 0 && (
+                            <span className="text-[10px] text-slate-500 italic">—</span>
+                          )}
+                        </div>
+                      </td>
+
+                      {/* Experience & Retention Stability */}
+                      <td className="py-3.5 px-4">
+                        <div className="space-y-1">
+                          <p className="text-[11px] text-slate-200">
+                            <strong className="text-white font-bold">{cand.total_experience} yrs</strong> • {cand.companies_count || (cand.employment_history?.length || 1)} cos
+                          </p>
+                          {cand.stability_rating === 'FREQUENT_CHANGER' ? (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40">
+                              <AlertTriangle className="w-3 h-3 text-amber-400" /> HR Review
+                            </span>
+                          ) : cand.stability_rating === 'HIGH_RETENTION' ? (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
+                              <ShieldCheck className="w-3 h-3 text-emerald-400" /> High Retention
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-slate-800 text-slate-400 border border-slate-700">
+                              Standard Stability
                             </span>
                           )}
                         </div>
                       </td>
 
-                      {/* Outreach Eligibility */}
-                      <td className="py-3.5 px-4">
-                        {isOptedOut ? (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-500/10 text-rose-400 border border-rose-500/20">
-                            <XCircle className="w-3 h-3" /> Opted Out
-                          </span>
-                        ) : isEligible ? (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-300 border border-emerald-500/30">
-                            <CheckCircle2 className="w-3 h-3 text-emerald-400" /> WhatsApp Ready
-                          </span>
-                        ) : (
-                          <button
-                            onClick={() => {
-                              setSelectedCandidate(cand);
-                              setShowConsentModal(true);
-                            }}
-                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/10 text-amber-300 border border-amber-500/30 hover:bg-amber-500/20 transition cursor-pointer"
-                          >
-                            <AlertCircle className="w-3 h-3 text-amber-400" /> Consent Required
-                          </button>
-                        )}
-                      </td>
-
                       {/* Bench Status */}
                       <td className="py-3.5 px-4">
                         {cand.bench_status && cand.bench_status !== 'NOT_ON_BENCH' ? (
-                          <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 uppercase">
-                            {cand.bench_status}
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-300 border border-emerald-500/30 uppercase">
+                            🟢 {cand.bench_status}
                           </span>
                         ) : (
                           <span className="text-[11px] text-slate-400">Regular Pool</span>
@@ -933,7 +1117,7 @@ export const CandidatesPage: React.FC<CandidatesPageProps> = ({ onViewCandidateP
                           <button
                             onClick={() => handleOpenSubmitModal([cand.id])}
                             title="Submit to Client / Requirement"
-                            className="flex items-center gap-1 px-2 py-1 bg-emerald-950/40 hover:bg-emerald-900/80 text-emerald-300 hover:text-white rounded-lg border border-emerald-800/60 text-xs font-semibold transition"
+                            className="flex items-center gap-1 px-2.5 py-1 bg-emerald-950/40 hover:bg-emerald-900/80 text-emerald-300 hover:text-white rounded-lg border border-emerald-800/60 text-xs font-semibold transition"
                           >
                             <Share2 className="w-3.5 h-3.5" />
                             <span>Submit</span>
@@ -942,16 +1126,16 @@ export const CandidatesPage: React.FC<CandidatesPageProps> = ({ onViewCandidateP
                           {/* Download CV */}
                           <button
                             onClick={() => handleDownloadCV(cand.id, cand.latest_document?.file_name)}
-                            title="Download CV"
+                            title="Download / View CV"
                             className="p-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white rounded-lg border border-slate-700 transition"
                           >
-                            <Download className="w-3.5 h-3.5" />
+                            <Download className="w-3.5 h-3.5 text-cyan-400" />
                           </button>
 
                           {/* Profile View */}
                           <button
                             onClick={() => onViewCandidateProfile && onViewCandidateProfile(cand.id)}
-                            className="flex items-center gap-1 px-2.5 py-1 bg-brand-600/20 hover:bg-brand-600/30 text-brand-300 border border-brand-500/30 rounded-lg text-xs font-semibold transition"
+                            className="flex items-center gap-1 px-2.5 py-1 bg-cyan-600/20 hover:bg-cyan-600/30 text-cyan-300 border border-cyan-500/30 rounded-lg text-xs font-semibold transition"
                           >
                             <Eye className="w-3.5 h-3.5" />
                             <span>Profile</span>
@@ -964,7 +1148,6 @@ export const CandidatesPage: React.FC<CandidatesPageProps> = ({ onViewCandidateP
                             className="flex items-center gap-1 px-2 py-1 bg-rose-950/40 hover:bg-rose-900/80 text-rose-300 hover:text-white rounded-lg border border-rose-800/60 text-xs font-semibold transition"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
-                            <span>Delete</span>
                           </button>
                         </div>
                       </td>
@@ -1041,22 +1224,39 @@ export const CandidatesPage: React.FC<CandidatesPageProps> = ({ onViewCandidateP
 
               {/* Extraction Preview Badge Card */}
               {extractedInfo && (
-                <div className="mt-3 p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-lg flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-                    <div>
-                      <p className="text-xs font-bold text-emerald-300">CV Extracted: {extractedInfo.file_name}</p>
-                      <p className="text-[10px] text-slate-400">
-                        {extractedInfo.skills.length} skills identified • {extractedInfo.total_experience} yrs exp • WhatsApp: {extractedInfo.whatsapp_eligibility?.status}
-                      </p>
+                <div className="mt-3 p-3.5 bg-gradient-to-r from-cyan-950/40 to-slate-900 border border-cyan-500/40 rounded-xl space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <CheckCircle2 className="w-4 h-4 text-cyan-400 shrink-0" />
+                      <div>
+                        <p className="text-xs font-bold text-cyan-300">CV Extracted: {extractedInfo.file_name}</p>
+                        <p className="text-[11px] text-white font-semibold flex items-center gap-1.5 pt-0.5">
+                          Extracted Position: <span className="px-2 py-0.5 bg-cyan-500/20 text-cyan-200 rounded border border-cyan-500/40 font-bold">{extractedInfo.position || extractedInfo.current_designation || 'Software Engineer'}</span>
+                        </p>
+                      </div>
                     </div>
+
+                    {extractedInfo.is_duplicate && (
+                      <span className="px-2 py-0.5 bg-amber-500/20 text-amber-300 text-[10px] font-bold border border-amber-500/40 rounded flex items-center gap-1">
+                        <AlertTriangle className="w-3 h-3" /> Duplicate Detected ({extractedInfo.duplicate_match_field})
+                      </span>
+                    )}
                   </div>
 
-                  {extractedInfo.is_duplicate && (
-                    <span className="px-2 py-0.5 bg-amber-500/20 text-amber-300 text-[10px] font-bold border border-amber-500/40 rounded flex items-center gap-1">
-                      <AlertTriangle className="w-3 h-3" /> Duplicate Detected ({extractedInfo.duplicate_match_field})
-                    </span>
-                  )}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1 border-t border-slate-800 text-[11px]">
+                    <div>
+                      <span className="text-emerald-400 font-bold">★ Primary Skills: </span>
+                      <span className="text-slate-300">
+                        {extractedInfo.primary_skills?.length ? extractedInfo.primary_skills.join(', ') : 'Derived from core stack'}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-slate-400 font-semibold">Supporting Skills: </span>
+                      <span className="text-slate-300">
+                        {extractedInfo.secondary_skills?.length ? extractedInfo.secondary_skills.join(', ') : 'None'}
+                      </span>
+                    </div>
+                  </div>
                 </div>
               )}
             </div>
@@ -1071,7 +1271,7 @@ export const CandidatesPage: React.FC<CandidatesPageProps> = ({ onViewCandidateP
                     required
                     value={formData.first_name}
                     onChange={(e) => setFormData({ ...formData, first_name: e.target.value })}
-                    className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-xs text-white focus:outline-none focus:border-brand-500"
+                    className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-xs text-white focus:outline-none focus:border-cyan-500"
                   />
                 </div>
 
@@ -1082,7 +1282,7 @@ export const CandidatesPage: React.FC<CandidatesPageProps> = ({ onViewCandidateP
                     required
                     value={formData.last_name}
                     onChange={(e) => setFormData({ ...formData, last_name: e.target.value })}
-                    className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-xs text-white focus:outline-none focus:border-brand-500"
+                    className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-xs text-white focus:outline-none focus:border-cyan-500"
                   />
                 </div>
 
@@ -1093,7 +1293,7 @@ export const CandidatesPage: React.FC<CandidatesPageProps> = ({ onViewCandidateP
                     required
                     value={formData.email}
                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                    className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-xs text-white focus:outline-none focus:border-brand-500"
+                    className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-xs text-white focus:outline-none focus:border-cyan-500"
                   />
                 </div>
 
@@ -1112,9 +1312,25 @@ export const CandidatesPage: React.FC<CandidatesPageProps> = ({ onViewCandidateP
                       placeholder="+91 9876543210"
                       value={formData.whatsapp_number}
                       onChange={(e) => setFormData({ ...formData, whatsapp_number: e.target.value, phone: e.target.value })}
-                      className="flex-1 px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-xs text-white focus:outline-none focus:border-brand-500"
+                      className="flex-1 px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-xs text-white focus:outline-none focus:border-cyan-500"
                     />
                   </div>
+                </div>
+
+                {/* Exact Position / Designation Field */}
+                <div>
+                  <label className="block text-xs font-bold text-cyan-300 mb-1 flex items-center gap-1">
+                    <Briefcase className="w-3.5 h-3.5 text-cyan-400" />
+                    Exact Position / Job Title * (as in CV)
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. Oracle Developer, Java Developer, Angular Developer"
+                    value={formData.position || formData.current_designation}
+                    onChange={(e) => setFormData({ ...formData, position: e.target.value, current_designation: e.target.value })}
+                    className="w-full px-3 py-2 bg-slate-950 border border-cyan-500/40 rounded-lg text-xs text-white font-semibold focus:outline-none focus:border-cyan-500"
+                  />
                 </div>
 
                 <div>
@@ -1124,17 +1340,7 @@ export const CandidatesPage: React.FC<CandidatesPageProps> = ({ onViewCandidateP
                     step="0.1"
                     value={formData.total_experience}
                     onChange={(e) => setFormData({ ...formData, total_experience: e.target.value })}
-                    className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-xs text-white focus:outline-none focus:border-brand-500"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-slate-300 mb-1">Current Designation</label>
-                  <input
-                    type="text"
-                    value={formData.current_designation}
-                    onChange={(e) => setFormData({ ...formData, current_designation: e.target.value })}
-                    className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-xs text-white focus:outline-none focus:border-brand-500"
+                    className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-xs text-white focus:outline-none focus:border-cyan-500"
                   />
                 </div>
 
@@ -1144,7 +1350,7 @@ export const CandidatesPage: React.FC<CandidatesPageProps> = ({ onViewCandidateP
                     type="text"
                     value={formData.current_company}
                     onChange={(e) => setFormData({ ...formData, current_company: e.target.value })}
-                    className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-xs text-white focus:outline-none focus:border-brand-500"
+                    className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-xs text-white focus:outline-none focus:border-cyan-500"
                   />
                 </div>
 
@@ -1154,19 +1360,48 @@ export const CandidatesPage: React.FC<CandidatesPageProps> = ({ onViewCandidateP
                     type="text"
                     value={formData.location}
                     onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-                    className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-xs text-white focus:outline-none focus:border-brand-500"
+                    className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-xs text-white focus:outline-none focus:border-cyan-500"
+                  />
+                </div>
+              </div>
+
+              {/* Skills Classification: Primary & Secondary */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-slate-950/60 p-3.5 rounded-xl border border-slate-800">
+                <div>
+                  <label className="block text-xs font-bold text-emerald-300 mb-1 flex items-center gap-1">
+                    ★ Primary Skills (Core / Main Skills, comma separated)
+                  </label>
+                  <input
+                    type="text"
+                    value={Array.isArray(formData.primary_skills) ? formData.primary_skills.join(', ') : formData.primary_skills || ''}
+                    onChange={(e) => setFormData({ ...formData, primary_skills: e.target.value })}
+                    placeholder="e.g. Oracle, PL/SQL, SQL, Oracle Forms"
+                    className="w-full px-3 py-2 bg-slate-950 border border-emerald-500/30 rounded-lg text-xs text-emerald-200 font-medium focus:outline-none focus:border-emerald-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-300 mb-1">
+                    Secondary Skills (Supporting / Additional Skills, comma separated)
+                  </label>
+                  <input
+                    type="text"
+                    value={Array.isArray(formData.secondary_skills) ? formData.secondary_skills.join(', ') : formData.secondary_skills || ''}
+                    onChange={(e) => setFormData({ ...formData, secondary_skills: e.target.value })}
+                    placeholder="e.g. Finance, IT, Support, Reporting"
+                    className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-xs text-slate-300 focus:outline-none focus:border-cyan-500"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-300 mb-1">Key Technical Skills (Comma separated)</label>
+                <label className="block text-xs font-bold text-slate-300 mb-1">All Technical Skills (Comma separated)</label>
                 <input
                   type="text"
                   value={Array.isArray(formData.skills) ? formData.skills.join(', ') : formData.skills}
                   onChange={(e) => setFormData({ ...formData, skills: e.target.value })}
-                  placeholder="Python, FastAPI, React, PostgreSQL, Docker..."
-                  className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-xs text-white focus:outline-none focus:border-brand-500"
+                  placeholder="Oracle, PL/SQL, SQL, Forms, Finance, IT, Support, Reporting..."
+                  className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-xs text-white focus:outline-none focus:border-cyan-500"
                 />
               </div>
 

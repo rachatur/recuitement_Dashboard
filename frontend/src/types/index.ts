@@ -300,6 +300,9 @@ export interface Candidate {
   relevant_experience: number;
   current_company?: string | null;
   current_designation?: string | null;
+  position?: string | null;
+  primary_skills?: string[];
+  secondary_skills?: string[];
   current_ctc?: number | null;
   expected_ctc?: number | null;
   employment_history?: EmploymentHistoryItem[];
@@ -361,6 +364,19 @@ export interface Candidate {
   updated_at: string;
 }
 
+export interface CandidatePositionGroupItem {
+  position: string;
+  count: number;
+  percentage: number;
+  top_primary_skills: string[];
+  avg_experience: number;
+}
+
+export interface CandidatePositionsSummaryResponse {
+  total_candidates: number;
+  positions: CandidatePositionGroupItem[];
+}
+
 export interface CVExtractionResponse {
   file_name: string;
   file_size: number;
@@ -380,8 +396,11 @@ export interface CVExtractionResponse {
   relevant_experience?: number;
   current_company?: string;
   current_designation?: string;
+  position?: string;
   skills: string[];
   technical_skills?: string[];
+  primary_skills?: string[];
+  secondary_skills?: string[];
   education?: string;
   highest_qualification?: string;
   notice_period?: string;
@@ -439,6 +458,7 @@ export interface BenchCandidate {
   relevant_experience: number;
   current_company?: string | null;
   designation?: string | null;
+  position?: string | null;
   primary_skills: string[];
   secondary_skills: string[];
   notice_period?: string | null;

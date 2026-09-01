@@ -410,6 +410,11 @@ class CandidateBase(BaseModel):
     preferred_contact_time: Optional[str] = None
     do_not_contact_reason: Optional[str] = None
     
+    # Position and Skills classification
+    position: Optional[str] = None
+    primary_skills: List[str] = []
+    secondary_skills: List[str] = []
+
     # Bench fields
     bench_status: BenchStatusEnum = BenchStatusEnum.NOT_ON_BENCH
     bench_availability_date: Optional[datetime] = None
@@ -431,6 +436,7 @@ class CandidateUpdate(BaseModel):
     relevant_experience: Optional[float] = None
     current_company: Optional[str] = None
     current_designation: Optional[str] = None
+    position: Optional[str] = None
     current_ctc: Optional[float] = None
     expected_ctc: Optional[float] = None
     employment_history: Optional[List[EmploymentHistoryItem]] = None
@@ -438,6 +444,8 @@ class CandidateUpdate(BaseModel):
     notice_period: Optional[str] = None
     skills: Optional[List[str]] = None
     technical_skills: Optional[List[str]] = None
+    primary_skills: Optional[List[str]] = None
+    secondary_skills: Optional[List[str]] = None
     education: Optional[str] = None
     highest_qualification: Optional[str] = None
     linkedin_url: Optional[str] = None
@@ -470,9 +478,23 @@ class CandidateStatusUpdateRequest(BaseModel):
     submission_id: Optional[str] = None
     requirement_id: Optional[str] = None
 
+class CandidatePositionGroupItem(BaseModel):
+    position: str
+    count: int = 0
+    percentage: float = 0.0
+    top_primary_skills: List[str] = []
+    avg_experience: float = 0.0
+
+class CandidatePositionsSummaryResponse(BaseModel):
+    total_candidates: int = 0
+    positions: List[CandidatePositionGroupItem] = []
+
 class CandidateResponse(CandidateBase):
     id: str
     candidate_code: str
+    position: Optional[str] = None
+    primary_skills: List[str] = []
+    secondary_skills: List[str] = []
     recruiter_name: Optional[str] = None
     active_submissions_count: int = 0
     latest_document: Optional[CandidateDocumentResponse] = None
@@ -568,8 +590,11 @@ class CVExtractionResponse(BaseModel):
     relevant_experience: Optional[float] = 0.0
     current_company: Optional[str] = ""
     current_designation: Optional[str] = ""
+    position: Optional[str] = ""
     skills: List[str] = []
     technical_skills: List[str] = []
+    primary_skills: List[str] = []
+    secondary_skills: List[str] = []
     education: Optional[str] = ""
     highest_qualification: Optional[str] = ""
     notice_period: Optional[str] = ""

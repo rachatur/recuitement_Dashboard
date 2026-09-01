@@ -283,5 +283,123 @@ def test_candidate_status_history_feed_analytics():
     assert latest_ev["new_status"] == "INTERVIEW"
     assert "interview round 1" in latest_ev["remarks"]
 
+def test_auto_position_and_skills_classification():
+    token = get_token()
+    ts = int(time.time() * 1000)
+
+    # 1. Test Oracle Developer CV text extraction
+    oracle_cv = f"""
+    Amit Verma
+    Oracle Developer | 5 Years Experience
+    Email: amit.oracle.{ts}@example.com
+    Phone: +91 9811223344
+    Role: Oracle Developer
+    Primary Skills: Oracle, PL/SQL, SQL, Oracle Forms, Oracle Reports
+    Secondary Skills: Support, Reporting, Finance, IT, Linux, Git
+    Summary: 5+ years experienced Oracle Developer specializing in PL/SQL database tuning and Oracle Forms.
+    """.encode()
+
+    ext_resp = client.post(
+        "/api/v1/candidates/extract-cv",
+        files={"file": ("Amit_Verma_Oracle_CV.txt", oracle_cv, "text/plain")},
+        headers={"Authorization": f"Bearer {token}"}
+    )
+    assert ext_resp.status_code == 200
+    ext_data = ext_resp.json()
+
+    # Position must be accurately extracted as Oracle Developer
+    assert "Oracle" in ext_data["position"] or "Oracle Developer" in ext_data["current_designation"]
+    assert "Oracle" in ext_data["primary_skills"]
+    assert "PL/SQL" in ext_data["primary_skills"] or "SQL" in ext_data["primary_skills"]
+
+    # 2. Test Java Developer CV text extraction
+    java_cv = f"""
+    Priya Nair
+    Senior Java Developer
+    Email: priya.java.{ts}@example.com
+    Phone: +91 9822334455
+    Experience: 4 years
+    Skills: Java, Spring Boot, Microservices, Hibernate, REST API, Git, Docker, Agile
+    """.encode()
+
+    ext_java_resp = client.post(
+        "/api/v1/candidates/extract-cv",
+        files={"file": ("Priya_Nair_Java_CV.txt", java_cv, "text/plain")},
+        headers={"Authorization": f"Bearer {token}"}
+    )
+    assert ext_java_resp.status_code == 200
+    ext_java_data = ext_java_resp.json()
+
+    assert "Java" in ext_java_data["position"]
+    assert "Java" in ext_java_data["primary_skills"]
+
+def test_candidate_positions_summary_and_filtering():
+    token = get_token()
+    ts = int(time.time() * 1000)
+
+    # Create an Oracle candidate
+    c1 = client.post(
+        "/api/v1/candidates",
+        json={
+            "first_name": "Oracle",
+            "last_name": f"Expert {ts}",
+            "email": f"oracle.expert.{ts}@example.com",
+            "current_designation": "Oracle Developer",
+            "position": "Oracle Developer",
+            "skills": ["Oracle", "PL/SQL", "SQL", "Oracle Forms", "Finance", "Support", "Reporting"],
+            "primary_skills": ["Oracle", "PL/SQL", "SQL", "Oracle Forms"],
+            "secondary_skills": ["Finance", "Support", "Reporting", "Git"],
+            "total_experience": 4.5,
+            "location": "Pune"
+        },
+        headers={"Authorization": f"Bearer {token}"}
+    )
+    assert c1.status_code == 200
+
+    # Create a Java candidate
+    c2 = client.post(
+        "/api/v1/candidates",
+        json={
+            "first_name": "Java",
+            "last_name": f"Lead {ts}",
+            "email": f"java.lead.{ts}@example.com",
+            "current_designation": "Java Developer",
+            "position": "Java Developer",
+            "skills": ["Java", "Spring Boot", "Microservices", "Docker", "Git"],
+            "primary_skills": ["Java", "Spring Boot", "Microservices"],
+            "secondary_skills": ["Docker", "Git", "Agile"],
+            "total_experience": 6.0,
+            "location": "Bangalore"
+        },
+        headers={"Authorization": f"Bearer {token}"}
+    )
+    assert c2.status_code == 200
+
+    # 1. Query positions summary
+    summary_resp = client.get(
+        "/api/v1/candidates/positions-summary",
+        headers={"Authorization": f"Bearer {token}"}
+    )
+    assert summary_resp.status_code == 200
+    sum_data = summary_resp.json()
+    assert sum_data["total_candidates"] >= 2
+    assert len(sum_data["positions"]) >= 2
+
+    # Check positions breakdown contains Oracle Developer & Java Developer
+    pos_titles = [p["position"] for p in sum_data["positions"]]
+    assert any("Oracle" in pt for pt in pos_titles)
+    assert any("Java" in pt for pt in pos_titles)
+
+    # 2. Query candidates filtered by position "Oracle Developer"
+    filter_pos_resp = client.get(
+        "/api/v1/candidates?position=Oracle%20Developer",
+        headers={"Authorization": f"Bearer {token}"}
+    )
+    assert filter_pos_resp.status_code == 200
+    pos_cands = filter_pos_resp.json()
+    assert len(pos_cands) >= 1
+    for pc in pos_cands:
+        assert "Oracle" in (pc["position"] or pc["current_designation"])
+
 
 

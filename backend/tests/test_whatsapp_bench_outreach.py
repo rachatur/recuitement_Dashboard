@@ -158,21 +158,27 @@ def test_whatsapp_full_lifecycle():
     assert preview_resp.status_code == 200
     assert "rendered_body" in preview_resp.json()
 
-    # 5. Conversations list & Simulator Reply
-    convs_resp = client.get("/api/v1/whatsapp/conversations", headers={"Authorization": f"Bearer {rec_tok}"})
-    assert convs_resp.status_code == 200
-    convs = convs_resp.json()
-    assert len(convs) > 0
-    first_conv = convs[0]
+    # 5. Candidates list & Simulator Reply
+    cand_resp = client.get("/api/v1/candidates", headers={"Authorization": f"Bearer {rec_tok}"})
+    assert cand_resp.status_code == 200
+    cands = cand_resp.json()
+    assert len(cands) > 0
+    test_cand_id = cands[0]["id"]
 
     # Simulate Candidate sending "YES, Interested!"
     sim_resp = client.post(
         "/api/v1/whatsapp/conversations/simulate-reply",
-        json={"candidate_id": first_conv["candidate_id"], "message_text": "YES, I am definitely interested!"},
+        json={"candidate_id": test_cand_id, "message_text": "YES, I am definitely interested!"},
         headers={"Authorization": f"Bearer {rec_tok}"}
     )
     assert sim_resp.status_code == 200
     assert sim_resp.json()["status"] == "success"
+
+    # Verify conversation is recorded
+    convs_resp = client.get("/api/v1/whatsapp/conversations", headers={"Authorization": f"Bearer {rec_tok}"})
+    assert convs_resp.status_code == 200
+    convs = convs_resp.json()
+    assert len(convs) > 0
 
     # 6. Dashboard Outreach metrics
     dash_resp = client.get("/api/v1/whatsapp/dashboard", headers={"Authorization": f"Bearer {rec_tok}"})

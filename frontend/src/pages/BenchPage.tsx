@@ -143,6 +143,25 @@ export const BenchPage: React.FC<BenchPageProps> = ({
     document.body.removeChild(a);
   };
 
+  const [selectedPosition, setSelectedPosition] = useState<string>('all');
+
+  const positionGroups = React.useMemo(() => {
+    const map: Record<string, number> = {};
+    candidates.forEach((c) => {
+      const pos = c.position || c.designation || 'Software Engineer';
+      map[pos] = (map[pos] || 0) + 1;
+    });
+    return Object.entries(map).map(([position, count]) => ({ position, count }));
+  }, [candidates]);
+
+  const displayedCandidates = React.useMemo(() => {
+    if (selectedPosition === 'all') return candidates;
+    return candidates.filter((c) => {
+      const pos = c.position || c.designation || 'Software Engineer';
+      return pos.toLowerCase() === selectedPosition.toLowerCase();
+    });
+  }, [candidates, selectedPosition]);
+
   return (
     <div className="space-y-6">
       {/* Header & Actions */}
@@ -153,7 +172,7 @@ export const BenchPage: React.FC<BenchPageProps> = ({
             Bench Resource Pool
           </h1>
           <p className="text-sm text-slate-400">
-            Deployable internal talent, availability schedules, requirement matching, and instant WhatsApp campaign outreach.
+            Deployable internal talent, position groupings, requirement matching, and instant WhatsApp campaign outreach.
           </p>
         </div>
 
@@ -164,7 +183,7 @@ export const BenchPage: React.FC<BenchPageProps> = ({
               setShowMatchModal(true);
               if (selectedRequirementId) handleRunRequirementMatch();
             }}
-            className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white rounded-lg text-xs font-bold shadow-lg shadow-emerald-500/20 transition"
+            className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white rounded-xl text-xs font-bold shadow-lg shadow-emerald-500/20 transition"
           >
             <Sparkles className="w-4 h-4" />
             <span>Match to Job Requirement</span>
@@ -172,8 +191,57 @@ export const BenchPage: React.FC<BenchPageProps> = ({
         </div>
       </div>
 
+      {/* Position-Wise Bench Summary Cards */}
+      <div className="bg-slate-900/90 p-4 rounded-2xl border border-slate-800/80 shadow-lg space-y-3">
+        <div className="flex items-center justify-between border-b border-slate-800/60 pb-2">
+          <div className="flex items-center gap-2">
+            <Users className="w-4 h-4 text-emerald-400" />
+            <h2 className="text-xs font-bold uppercase tracking-wider text-slate-200">
+              Bench Resources by Position ({candidates.length} Total)
+            </h2>
+          </div>
+          <span className="text-[11px] text-slate-400">Filter bench pool by role</span>
+        </div>
+
+        <div className="flex items-center gap-2.5 overflow-x-auto pb-1 scrollbar-thin">
+          <button
+            onClick={() => setSelectedPosition('all')}
+            className={`px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 shrink-0 ${
+              selectedPosition === 'all'
+                ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/30 ring-1 ring-emerald-400'
+                : 'bg-slate-950/80 text-slate-300 border border-slate-800 hover:border-slate-700'
+            }`}
+          >
+            <span>All Bench Resources</span>
+            <span className={`px-2 py-0.5 rounded-full text-[10px] font-black ${selectedPosition === 'all' ? 'bg-white/20 text-white' : 'bg-slate-800 text-emerald-300'}`}>
+              {candidates.length}
+            </span>
+          </button>
+
+          {positionGroups.map((p) => {
+            const isSel = selectedPosition.toLowerCase() === p.position.toLowerCase();
+            return (
+              <button
+                key={p.position}
+                onClick={() => setSelectedPosition(isSel ? 'all' : p.position)}
+                className={`px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 shrink-0 ${
+                  isSel
+                    ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-lg shadow-emerald-600/30 ring-1 ring-emerald-400'
+                    : 'bg-slate-950/80 text-slate-300 border border-slate-800 hover:border-emerald-500/50'
+                }`}
+              >
+                <span>{p.position}</span>
+                <span className={`px-2 py-0.5 rounded-full text-[10px] font-black ${isSel ? 'bg-white/20 text-white' : 'bg-slate-800 text-emerald-300 border border-emerald-500/30'}`}>
+                  {p.count} Candidates
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
       {/* Filter Bar */}
-      <div className="bg-slate-900/80 border border-slate-800 rounded-xl p-4 flex flex-col md:flex-row items-center justify-between gap-4">
+      <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-4 flex flex-col md:flex-row items-center justify-between gap-4">
         <div className="flex items-center gap-3 w-full md:w-auto flex-1">
           <div className="relative flex-1">
             <Search className="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
@@ -182,16 +250,16 @@ export const BenchPage: React.FC<BenchPageProps> = ({
               placeholder="Search bench resources by name, skills, designation, location..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-9 pr-4 py-2 bg-slate-950 border border-slate-800 rounded-lg text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500"
+              className="w-full pl-9 pr-4 py-2 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500"
             />
           </div>
 
           <input
             type="text"
-            placeholder="Skill (e.g. Python)..."
+            placeholder="Skill (e.g. Python, Oracle)..."
             value={skillFilter}
             onChange={(e) => setSkillFilter(e.target.value)}
-            className="w-40 px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 hidden sm:block"
+            className="w-44 px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 hidden sm:block"
           />
         </div>
 
@@ -199,7 +267,7 @@ export const BenchPage: React.FC<BenchPageProps> = ({
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
-            className="px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-xs text-slate-300 focus:outline-none focus:border-emerald-500"
+            className="px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-300 focus:outline-none focus:border-emerald-500"
           >
             <option value="">All Bench Statuses</option>
             <option value="AVAILABLE">Available</option>
@@ -210,7 +278,7 @@ export const BenchPage: React.FC<BenchPageProps> = ({
             <option value="RELEASED">Released</option>
           </select>
 
-          <label className="flex items-center gap-2 cursor-pointer text-xs text-emerald-300 font-semibold bg-slate-950 px-3 py-2 rounded-lg border border-emerald-500/30">
+          <label className="flex items-center gap-2 cursor-pointer text-xs text-emerald-300 font-semibold bg-slate-950 px-3 py-2 rounded-xl border border-emerald-500/30">
             <input
               type="checkbox"
               checked={waEligibleOnly}
@@ -228,21 +296,24 @@ export const BenchPage: React.FC<BenchPageProps> = ({
           <RefreshCw className="w-8 h-8 animate-spin mx-auto mb-2 text-emerald-400" />
           Loading bench resources...
         </div>
-      ) : candidates.length === 0 ? (
-        <div className="bg-slate-900/80 border border-slate-800 rounded-xl p-12 text-center text-slate-500">
+      ) : displayedCandidates.length === 0 ? (
+        <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-12 text-center text-slate-500">
           <Award className="w-10 h-10 mx-auto mb-2 opacity-30 text-emerald-400" />
           <p className="text-sm font-semibold text-slate-300">No bench candidates found</p>
-          <p className="text-xs text-slate-500 mt-1">Try adjusting your skill, search, or status filters.</p>
+          <p className="text-xs text-slate-500 mt-1">Try adjusting your position, skill, or status filters.</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-          {candidates.map((c) => {
+          {displayedCandidates.map((c) => {
             const isEligible = c.whatsapp_eligibility?.is_eligible;
+            const exactPos = c.position || c.designation || 'Software Engineer';
+            const primSkills = c.primary_skills || [];
+            const secSkills = c.secondary_skills || [];
 
             return (
               <div
                 key={c.candidate_id}
-                className="bg-slate-900/90 border border-slate-800 hover:border-emerald-500/40 rounded-xl p-5 shadow-lg hover:shadow-emerald-500/5 transition flex flex-col justify-between space-y-4"
+                className="bg-slate-900/90 border border-slate-800 hover:border-emerald-500/40 rounded-2xl p-5 shadow-lg hover:shadow-emerald-500/5 transition flex flex-col justify-between space-y-4"
               >
                 <div>
                   {/* Top Bar: Name & Bench Status */}
@@ -254,7 +325,9 @@ export const BenchPage: React.FC<BenchPageProps> = ({
                       >
                         {c.full_name}
                       </button>
-                      <p className="text-xs text-slate-400 font-medium">{c.designation || 'Software Engineer'}</p>
+                      <span className="inline-block mt-1 px-2 py-0.5 bg-emerald-500/10 text-emerald-300 border border-emerald-500/30 rounded-md text-[11px] font-bold">
+                        {exactPos}
+                      </span>
                     </div>
 
                     <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border uppercase shrink-0 ${
@@ -296,18 +369,38 @@ export const BenchPage: React.FC<BenchPageProps> = ({
                     )}
                   </div>
 
-                  {/* Primary Skills */}
-                  <div className="mt-3">
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1.5">
-                      Core Stack
-                    </span>
-                    <div className="flex flex-wrap gap-1.5">
-                      {(c.primary_skills || []).map((s: string, idx: number) => (
-                        <span key={idx} className="px-2 py-0.5 bg-slate-950 text-slate-200 text-[11px] font-medium rounded border border-slate-800">
-                          {s}
-                        </span>
-                      ))}
+                  {/* Primary & Secondary Skills Classification */}
+                  <div className="mt-3 space-y-2">
+                    <div>
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-400 block mb-1">
+                        ★ Primary Core Skills
+                      </span>
+                      <div className="flex flex-wrap gap-1">
+                        {primSkills.map((s: string, idx: number) => (
+                          <span key={idx} className="px-2 py-0.5 bg-emerald-500/10 text-emerald-300 text-[10px] font-bold rounded border border-emerald-500/30">
+                            ★ {s}
+                          </span>
+                        ))}
+                        {primSkills.length === 0 && (
+                          <span className="text-[10px] text-slate-500 italic">—</span>
+                        )}
+                      </div>
                     </div>
+
+                    {secSkills.length > 0 && (
+                      <div>
+                        <span className="text-[10px] font-semibold text-slate-400 block mb-1">
+                          Supporting Skills
+                        </span>
+                        <div className="flex flex-wrap gap-1">
+                          {secSkills.slice(0, 4).map((s: string, idx: number) => (
+                            <span key={idx} className="px-1.5 py-0.5 bg-slate-950 text-slate-300 text-[10px] rounded border border-slate-800">
+                              {s}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
 

@@ -27,11 +27,13 @@ from app.schemas import (
     BulkDeleteCandidatesRequest, BulkDeleteCandidatesResponse,
     EmploymentHistoryItem, EmploymentGapItem,
     CandidateStatusSummaryCounts, CandidateStatusHistoryFeedItem,
-    CandidateHistoryLifecycleItem, CandidateHistoryPageResponse
+    CandidateHistoryLifecycleItem, CandidateHistoryPageResponse,
+    CandidatePositionGroupItem, CandidatePositionsSummaryResponse
 )
 from app.services.cv_extraction_service import (
     extract_text_from_file, parse_candidate_from_text,
-    validate_whatsapp_eligibility, check_candidate_duplicate
+    validate_whatsapp_eligibility, check_candidate_duplicate,
+    infer_position_and_skills
 )
 from app.services.whatsapp_service import record_candidate_opt_out
 
@@ -414,6 +416,14 @@ def build_candidate_response_obj(c: Candidate, db: Session) -> CandidateResponse
         current_company=c.current_company
     )
 
+    # Automatically infer accurate position and skills classification if not explicit
+    cand_position, default_primary, default_secondary = infer_position_and_skills(
+        current_designation=c.current_designation,
+        skills=c.skills or []
+    )
+    prim_skills = c.bench_primary_skills if c.bench_primary_skills else default_primary
+    sec_skills = c.bench_secondary_skills if c.bench_secondary_skills else default_secondary
+
     c_dict = {
         "id": str(c.id),
         "candidate_code": c.candidate_code,
@@ -427,7 +437,10 @@ def build_candidate_response_obj(c: Candidate, db: Session) -> CandidateResponse
         "total_experience": c.total_experience or 0.0,
         "relevant_experience": c.relevant_experience or 0.0,
         "current_company": c.current_company,
-        "current_designation": c.current_designation or "Software Engineer",
+        "current_designation": cand_position,
+        "position": cand_position,
+        "primary_skills": prim_skills,
+        "secondary_skills": sec_skills,
         "current_ctc": c.current_ctc,
         "expected_ctc": c.expected_ctc,
         "employment_history": history_items,
@@ -438,8 +451,8 @@ def build_candidate_response_obj(c: Candidate, db: Session) -> CandidateResponse
         "stability_label": stability_metrics["stability_label"],
         "notice_period_days": c.notice_period_days or 30,
         "notice_period": c.notice_period or f"{c.notice_period_days or 30} Days",
-        "skills": c.skills or [],
-        "technical_skills": c.technical_skills or c.skills or [],
+        "skills": c.skills or (prim_skills + sec_skills),
+        "technical_skills": c.technical_skills or c.skills or (prim_skills + sec_skills),
         "education": c.education,
         "highest_qualification": c.highest_qualification or c.education,
         "linkedin_url": c.linkedin_url,
@@ -463,8 +476,8 @@ def build_candidate_response_obj(c: Candidate, db: Session) -> CandidateResponse
         "do_not_contact_reason": c.do_not_contact_reason,
         "bench_status": c.bench_status or BenchStatusEnum.NOT_ON_BENCH,
         "bench_availability_date": c.bench_availability_date,
-        "bench_primary_skills": c.bench_primary_skills or (c.skills[:5] if c.skills else []),
-        "bench_secondary_skills": c.bench_secondary_skills or (c.skills[5:] if c.skills and len(c.skills) > 5 else []),
+        "bench_primary_skills": prim_skills,
+        "bench_secondary_skills": sec_skills,
         "active_submissions_count": active_subs,
         "latest_document": doc_resp,
         "whatsapp_eligibility": eligibility,
@@ -476,10 +489,78 @@ def build_candidate_response_obj(c: Candidate, db: Session) -> CandidateResponse
     }
     return CandidateResponse(**c_dict)
 
+@router.get("/positions-summary", response_model=CandidatePositionsSummaryResponse)
+def get_candidate_positions_summary(
+    bench_only: bool = False,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Groups all candidates dynamically by their exact extracted position with counts, percentages, and top primary skills.
+    """
+    query = db.query(Candidate)
+    if bench_only:
+        query = query.filter(Candidate.bench_status != BenchStatusEnum.NOT_ON_BENCH)
+
+    user_role = str(current_user.role.value if hasattr(current_user.role, 'value') else current_user.role)
+    if user_role in [RoleEnum.CLIENT.value, RoleEnum.HIRING_MANAGER.value]:
+        if not current_user.client_id:
+            return CandidatePositionsSummaryResponse(total_candidates=0, positions=[])
+        sub_candidate_ids = db.query(CVSubmission.candidate_id).filter(CVSubmission.client_id == current_user.client_id).all()
+        cand_ids = [c[0] for c in sub_candidate_ids]
+        query = query.filter(Candidate.id.in_(cand_ids))
+
+    candidates = query.all()
+    pos_map: Dict[str, Dict[str, Any]] = {}
+
+    for c in candidates:
+        pos, prim, sec = infer_position_and_skills(c.current_designation, c.skills or [])
+        if not pos or not pos.strip():
+            pos = "Software Engineer"
+
+        if pos not in pos_map:
+            pos_map[pos] = {
+                "position": pos,
+                "count": 0,
+                "primary_skills": [],
+                "total_exp": 0.0
+            }
+        pos_map[pos]["count"] += 1
+        pos_map[pos]["total_exp"] += (c.total_experience or 0.0)
+        for ps in prim[:4]:
+            if ps not in pos_map[pos]["primary_skills"]:
+                pos_map[pos]["primary_skills"].append(ps)
+
+    total = len(candidates)
+    items = []
+    # Sort positions by highest count first
+    sorted_pos = sorted(pos_map.values(), key=lambda x: x["count"], reverse=True)
+    for p in sorted_pos:
+        cnt = p["count"]
+        pct = round((cnt / total * 100), 1) if total > 0 else 0.0
+        avg_exp = round((p["total_exp"] / cnt), 1) if cnt > 0 else 0.0
+        items.append(CandidatePositionGroupItem(
+            position=p["position"],
+            count=cnt,
+            percentage=pct,
+            top_primary_skills=p["primary_skills"][:5],
+            avg_experience=avg_exp
+        ))
+
+    return CandidatePositionsSummaryResponse(
+        total_candidates=total,
+        positions=items
+    )
+
 @router.get("", response_model=List[CandidateResponse])
 def get_candidates(
     search: Optional[str] = None,
+    position: Optional[str] = None,
+    primary_skill: Optional[str] = None,
+    secondary_skill: Optional[str] = None,
     skill: Optional[str] = None,
+    location: Optional[str] = None,
+    bench_status: Optional[str] = None,
     min_experience: Optional[float] = None,
     max_experience: Optional[float] = None,
     notice_days: Optional[int] = None,
@@ -503,10 +584,12 @@ def get_candidates(
 
     if recruiter_id:
         query = query.filter(Candidate.recruiter_id == recruiter_id)
-    if status:
+    if status and status != "all":
         query = query.filter(Candidate.status == status)
-    if consent_status:
+    if consent_status and consent_status != "all":
         query = query.filter(Candidate.whatsapp_consent_status == consent_status)
+    if bench_status and bench_status != "all":
+        query = query.filter(Candidate.bench_status == bench_status)
     if min_experience is not None:
         query = query.filter(Candidate.total_experience >= min_experience)
     if max_experience is not None:
@@ -541,12 +624,38 @@ def get_candidates(
     candidates = query.order_by(Candidate.created_at.desc()).all()
     results = []
     for c in candidates:
-        if skill:
+        if skill and skill != "all":
             cand_skills_lower = [s.lower() for s in (c.skills or [])]
             if skill.lower() not in cand_skills_lower:
                 continue
 
         resp = build_candidate_response_obj(c, db)
+
+        # Position filter
+        if position and position != "all":
+            target_pos = position.strip().lower()
+            cand_pos = (resp.position or resp.current_designation or "").strip().lower()
+            if target_pos != cand_pos and target_pos not in cand_pos:
+                continue
+
+        # Primary skill filter
+        if primary_skill and primary_skill != "all":
+            prim_lower = [s.lower() for s in (resp.primary_skills or [])]
+            if primary_skill.lower() not in prim_lower:
+                continue
+
+        # Secondary skill filter
+        if secondary_skill and secondary_skill != "all":
+            sec_lower = [s.lower() for s in (resp.secondary_skills or [])]
+            if secondary_skill.lower() not in sec_lower:
+                continue
+
+        # Location filter
+        if location and location != "all":
+            cand_loc = (c.location or "").lower()
+            if location.lower() not in cand_loc:
+                continue
+
         if whatsapp_eligible is not None:
             if resp.whatsapp_eligibility and resp.whatsapp_eligibility.is_eligible != whatsapp_eligible:
                 continue
@@ -845,9 +954,12 @@ async def extract_cv_details(
         total_experience=parsed.get("total_experience", 0.0),
         relevant_experience=parsed.get("relevant_experience", 0.0),
         current_company=parsed.get("current_company", ""),
-        current_designation=parsed.get("current_designation", ""),
+        current_designation=parsed.get("position") or parsed.get("current_designation", ""),
+        position=parsed.get("position") or parsed.get("current_designation", ""),
         skills=parsed.get("skills", []),
         technical_skills=parsed.get("technical_skills", []),
+        primary_skills=parsed.get("primary_skills", []),
+        secondary_skills=parsed.get("secondary_skills", []),
         education=parsed.get("education", ""),
         highest_qualification=parsed.get("highest_qualification", ""),
         notice_period=parsed.get("notice_period", ""),
@@ -960,9 +1072,11 @@ async def bulk_cv_upload(
                 total_experience=parsed.get("total_experience", 2.0),
                 relevant_experience=parsed.get("relevant_experience", 2.0),
                 current_company=parsed.get("current_company", ""),
-                current_designation=parsed.get("current_designation", "Software Engineer"),
+                current_designation=parsed.get("position") or parsed.get("current_designation", "Software Engineer"),
                 skills=parsed.get("skills", []),
                 technical_skills=parsed.get("technical_skills", []),
+                bench_primary_skills=parsed.get("primary_skills", []),
+                bench_secondary_skills=parsed.get("secondary_skills", []),
                 education=parsed.get("education", "Bachelor's Degree"),
                 highest_qualification=parsed.get("highest_qualification", "Bachelor's Degree"),
                 notice_period=parsed.get("notice_period", "30 Days"),
@@ -1099,7 +1213,7 @@ def create_candidate(
         total_experience=cand_in.total_experience,
         relevant_experience=cand_in.relevant_experience,
         current_company=cand_in.current_company,
-        current_designation=cand_in.current_designation,
+        current_designation=cand_in.position or cand_in.current_designation,
         current_ctc=cand_in.current_ctc,
         expected_ctc=cand_in.expected_ctc,
         employment_history=[h.model_dump() if hasattr(h, 'model_dump') else h for h in (cand_in.employment_history or [])],
@@ -1126,8 +1240,8 @@ def create_candidate(
         preferred_contact_time=cand_in.preferred_contact_time,
         bench_status=cand_in.bench_status,
         bench_availability_date=cand_in.bench_availability_date,
-        bench_primary_skills=cand_in.bench_primary_skills or (cand_in.skills[:5] if cand_in.skills else []),
-        bench_secondary_skills=cand_in.bench_secondary_skills or (cand_in.skills[5:] if cand_in.skills and len(cand_in.skills) > 5 else [])
+        bench_primary_skills=cand_in.primary_skills or cand_in.bench_primary_skills or (cand_in.skills[:4] if cand_in.skills else []),
+        bench_secondary_skills=cand_in.secondary_skills or cand_in.bench_secondary_skills or (cand_in.skills[4:] if cand_in.skills and len(cand_in.skills) > 4 else [])
     )
     db.add(cand)
     db.flush()
