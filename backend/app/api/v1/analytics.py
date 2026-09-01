@@ -7,7 +7,9 @@ from app.core.database import get_db
 from app.core.rbac import get_current_active_user, RoleEnum
 from app.models import (
     User, Candidate, CVSubmission, Interview, Offer, JoiningDetail,
-    CandidateStatusHistory, Client, ClientFeedback, JobRequirement, RequirementStatusEnum
+    CandidateStatusHistory, Client, ClientFeedback, JobRequirement, RequirementStatusEnum,
+    CandidateStatusEnum, SubmissionStatusEnum, InterviewStatusEnum, OfferStatusEnum, JoiningStatusEnum,
+    BenchStatusEnum
 )
 from app.schemas import (
     TimeSeriesPoint, TimeMetricsResponse, RecruiterPerformanceItem,
@@ -277,35 +279,46 @@ def get_weekly_hr_report(
     off_q = db.query(Offer).filter(Offer.created_at.between(p_start, p_end))
     joi_q = db.query(JoiningDetail).filter(
         or_(
-            JoiningDetail.joining_date.between(p_start, p_end),
+            JoiningDetail.actual_joining_date.between(p_start, p_end),
             JoiningDetail.created_at.between(p_start, p_end)
         )
     )
 
-    if client_id:
+    if client_id and isinstance(client_id, str):
         sub_q = sub_q.filter(CVSubmission.client_id == client_id)
         int_q = int_q.filter(Interview.client_id == client_id)
         off_q = off_q.filter(Offer.client_id == client_id)
 
-    if recruiter_id:
+    if recruiter_id and isinstance(recruiter_id, str):
         cand_q = cand_q.filter(Candidate.recruiter_id == recruiter_id)
         sub_q = sub_q.filter(CVSubmission.recruiter_id == recruiter_id)
 
     total_candidates = cand_q.count()
     cvs_submitted = sub_q.count()
-    candidates_selected = sub_q.filter(CVSubmission.status.in_(["SELECTED", "OFFER", "JOINED", "SHORTLISTED"])).count()
-    candidates_rejected = sub_q.filter(CVSubmission.status == "REJECTED").count()
+    candidates_selected = sub_q.filter(CVSubmission.status.in_([SubmissionStatusEnum.SELECTED, SubmissionStatusEnum.OFFER, SubmissionStatusEnum.JOINED, SubmissionStatusEnum.SHORTLISTED])).count()
+    candidates_rejected = sub_q.filter(CVSubmission.status == SubmissionStatusEnum.REJECTED).count()
     interviews_scheduled = int_q.count()
-    interviews_completed = int_q.filter(Interview.status == "COMPLETED").count()
-    candidates_hired = off_q.filter(Offer.status.in_(["ACCEPTED", "RELEASED"])).count()
+    interviews_completed = int_q.filter(Interview.status == InterviewStatusEnum.COMPLETED).count()
+    candidates_hired = off_q.filter(Offer.status.in_([OfferStatusEnum.ACCEPTED, OfferStatusEnum.RELEASED])).count()
     
     # On hold count
     candidates_on_hold = db.query(Candidate).filter(
-        Candidate.status == "ON_HOLD",
+        or_(
+            Candidate.status == CandidateStatusEnum.ON_HOLD,
+            Candidate.bench_status == BenchStatusEnum.ON_HOLD
+        ),
         Candidate.updated_at.between(p_start, p_end)
     ).count()
 
-    candidates_joined = joi_q.filter(JoiningDetail.status == "JOINED").count()
+    candidates_joined = db.query(Candidate).filter(
+        or_(
+            Candidate.status == CandidateStatusEnum.JOINED,
+            Candidate.bench_status == BenchStatusEnum.JOINED
+        ),
+        Candidate.updated_at.between(p_start, p_end)
+    ).count()
+    if candidates_joined == 0:
+        candidates_joined = joi_q.filter(JoiningDetail.status == JoiningStatusEnum.JOINED).count()
 
     # Day-by-day activity points
     daily_metrics = []
@@ -317,11 +330,18 @@ def get_weekly_hr_report(
         d_cand = db.query(Candidate).filter(Candidate.created_at >= day_cursor, Candidate.created_at < day_end).count()
         d_sub = db.query(CVSubmission).filter(CVSubmission.created_at >= day_cursor, CVSubmission.created_at < day_end).count()
         d_int_sched = db.query(Interview).filter(Interview.interview_date >= day_cursor, Interview.interview_date < day_end).count()
-        d_int_comp = db.query(Interview).filter(Interview.interview_date >= day_cursor, Interview.interview_date < day_end, Interview.status == "COMPLETED").count()
-        d_sel = db.query(CVSubmission).filter(CVSubmission.created_at >= day_cursor, CVSubmission.created_at < day_end, CVSubmission.status.in_(["SELECTED", "OFFER", "JOINED"])).count()
-        d_rej = db.query(CVSubmission).filter(CVSubmission.created_at >= day_cursor, CVSubmission.created_at < day_end, CVSubmission.status == "REJECTED").count()
+        d_int_comp = db.query(Interview).filter(Interview.interview_date >= day_cursor, Interview.interview_date < day_end, Interview.status == InterviewStatusEnum.COMPLETED).count()
+        d_sel = db.query(CVSubmission).filter(CVSubmission.created_at >= day_cursor, CVSubmission.created_at < day_end, CVSubmission.status.in_([SubmissionStatusEnum.SELECTED, SubmissionStatusEnum.OFFER, SubmissionStatusEnum.JOINED])).count()
+        d_rej = db.query(CVSubmission).filter(CVSubmission.created_at >= day_cursor, CVSubmission.created_at < day_end, CVSubmission.status == SubmissionStatusEnum.REJECTED).count()
         d_off = db.query(Offer).filter(Offer.created_at >= day_cursor, Offer.created_at < day_end).count()
-        d_joi = db.query(JoiningDetail).filter(JoiningDetail.created_at >= day_cursor, JoiningDetail.created_at < day_end, JoiningDetail.status == "JOINED").count()
+        d_joi = db.query(Candidate).filter(
+            or_(
+                Candidate.status == CandidateStatusEnum.JOINED,
+                Candidate.bench_status == BenchStatusEnum.JOINED
+            ),
+            Candidate.updated_at >= day_cursor,
+            Candidate.updated_at < day_end
+        ).count()
 
         daily_metrics.append(WeeklyReportDailyMetric(
             date=day_cursor.strftime("%Y-%m-%d"),

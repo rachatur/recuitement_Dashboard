@@ -151,7 +151,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab }) => 
             )}
 
             {/* Dedicated Bench Resource Pool Section */}
-            {isRoleAllowed(['SUPER_ADMIN', 'ADMIN', 'RECRUITER', 'TEAM_LEAD', 'VIEWER']) && (
+            {isRoleAllowed(['SUPER_ADMIN', 'ADMIN', 'RECRUITER', 'TEAM_LEAD', 'CLIENT', 'HIRING_MANAGER', 'VIEWER']) && (
               <button
                 onClick={() => setActiveTab('bench')}
                 className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-semibold transition-all ${
@@ -166,6 +166,26 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab }) => 
                 </div>
                 <span className="text-[9px] font-bold px-1.5 py-0.5 bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded-full">
                   Pool
+                </span>
+              </button>
+            )}
+
+            {/* Weekly HR Report Section in Core Nav */}
+            {isRoleAllowed(['SUPER_ADMIN', 'ADMIN', 'RECRUITER', 'TEAM_LEAD', 'CLIENT', 'HIRING_MANAGER', 'VIEWER']) && (
+              <button
+                onClick={() => setActiveTab('weekly-hr-report')}
+                className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-semibold transition-all ${
+                  activeTab === 'weekly-hr-report'
+                    ? 'bg-blue-600/20 text-blue-300 border border-blue-500/30 shadow-sm'
+                    : 'text-slate-400 hover:text-blue-300 hover:bg-slate-900/60'
+                }`}
+              >
+                <div className="flex items-center gap-3 truncate">
+                  <BarChart3 className="w-4 h-4 text-blue-400 shrink-0" />
+                  <span className="truncate font-bold text-blue-300">Weekly HR Report</span>
+                </div>
+                <span className="text-[9px] font-bold px-1.5 py-0.5 bg-blue-500/20 text-blue-400 border border-blue-500/30 rounded-full">
+                  Report
                 </span>
               </button>
             )}

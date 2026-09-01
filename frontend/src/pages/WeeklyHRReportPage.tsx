@@ -20,6 +20,7 @@ export const WeeklyHRReportPage: React.FC<WeeklyHRReportPageProps> = ({
   const { token, user } = useAuth();
   const [report, setReport] = useState<WeeklyHRReportResponse | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [weekOffset, setWeekOffset] = useState<number>(0);
   const [useCustomRange, setUseCustomRange] = useState(false);
   const [startDate, setStartDate] = useState('');
@@ -28,6 +29,7 @@ export const WeeklyHRReportPage: React.FC<WeeklyHRReportPageProps> = ({
   const fetchWeeklyReport = async () => {
     try {
       setLoading(true);
+      setError(null);
       const params = new URLSearchParams();
       if (useCustomRange && startDate && endDate) {
         params.append('start_date', startDate);
@@ -46,9 +48,13 @@ export const WeeklyHRReportPage: React.FC<WeeklyHRReportPageProps> = ({
           setStartDate(data.start_date);
           setEndDate(data.end_date);
         }
+      } else {
+        const errData = await res.json().catch(() => ({}));
+        setError(errData.detail || 'Failed to load Weekly HR Report data.');
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('Failed to fetch weekly HR report:', err);
+      setError(err?.message || 'Network error fetching Weekly HR Report.');
     } finally {
       setLoading(false);
     }
@@ -212,6 +218,34 @@ export const WeeklyHRReportPage: React.FC<WeeklyHRReportPageProps> = ({
           </form>
         </div>
       </div>
+
+      {/* Error Alert */}
+      {error && (
+        <div className="p-4 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 rounded-2xl flex items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <XCircle className="w-5 h-5 text-rose-600 shrink-0" />
+            <div>
+              <p className="text-xs font-bold text-rose-900 dark:text-rose-200">Failed to load Weekly Report</p>
+              <p className="text-xs text-rose-700 dark:text-rose-300">{error}</p>
+            </div>
+          </div>
+          <button
+            onClick={() => fetchWeeklyReport()}
+            className="px-3 py-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold shrink-0 shadow-sm"
+          >
+            Retry
+          </button>
+        </div>
+      )}
+
+      {/* Loading state indicator */}
+      {loading && !report && (
+        <div className="py-24 text-center bg-white dark:bg-gray-900 rounded-2xl border border-gray-200/80 dark:border-gray-800 shadow-sm">
+          <RefreshCw className="w-8 h-8 text-blue-600 animate-spin mx-auto mb-3" />
+          <p className="text-sm font-bold text-gray-800 dark:text-gray-200">Loading Weekly HR Recruitment Analytics...</p>
+          <p className="text-xs text-gray-500 mt-1">Aggregating sourcing, submissions, interviews, and offers for this period.</p>
+        </div>
+      )}
 
       {/* 9 Highlight Metric KPI Cards */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3.5">
