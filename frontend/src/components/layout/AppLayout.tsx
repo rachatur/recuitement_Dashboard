@@ -27,8 +27,8 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
         <Navbar onSearch={onGlobalSearch} />
 
         {/* Dynamic Page Container */}
-        <main className="flex-1 overflow-y-auto px-8 py-6 bg-slate-50/70 dark:bg-slate-900/40">
-          <div className="max-w-7xl mx-auto">{children}</div>
+        <main className="flex-1 overflow-y-auto px-4 sm:px-8 py-6 luxury-gradient-dark">
+          <div className="max-w-[1600px] mx-auto">{children}</div>
         </main>
       </div>
 

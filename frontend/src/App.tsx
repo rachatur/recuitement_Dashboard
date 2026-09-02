@@ -72,7 +72,7 @@ const AppContent: React.FC = () => {
   const renderActivePage = () => {
     switch (activeTab) {
       case 'dashboard':
-        return <DashboardPage />;
+        return <DashboardPage onNavigate={setActiveTab} />;
       case 'clients':
         return <ClientsPage />;
       case 'requirements':
