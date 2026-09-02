@@ -1,28 +1,262 @@
-@tailwind base;
+﻿@tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
   body {
-    @apply bg-slate-900 text-slate-100 antialiased font-sans selection:bg-brand-500 selection:text-white;
+    @apply bg-slate-900 text-slate-100 antialiased font-sans selection:bg-brand-500 selection:text-white transition-colors duration-200;
   }
 }
 
-/* Custom scrollbars */
+/* ==========================================================================
+   GLOBAL LIGHT THEME SYSTEM (APPLIES TO ALL PAGES & COMPONENTS)
+   ========================================================================== */
+html.light,
+html.light body,
+body.light {
+  background-color: #f8fafc !important;
+  color: #0f172a !important;
+}
+
+/* --- Container Backgrounds --- */
+html.light [class*="bg-slate-950"] {
+  background-color: #f8fafc !important;
+}
+
+html.light [class*="bg-slate-900"] {
+  background-color: #ffffff !important;
+}
+
+html.light [class*="bg-slate-850"] {
+  background-color: #f1f5f9 !important;
+}
+
+html.light [class*="bg-slate-800"] {
+  background-color: #f1f5f9 !important;
+}
+
+html.light [class*="bg-slate-700"] {
+  background-color: #e2e8f0 !important;
+}
+
+/* --- Sidebar in Light Mode --- */
+html.light aside {
+  background-color: #ffffff !important;
+  border-right-color: #e2e8f0 !important;
+  box-shadow: 1px 0 3px 0 rgba(0, 0, 0, 0.03) !important;
+}
+
+html.light aside nav {
+  background-color: #ffffff !important;
+}
+
+/* --- Top Navbar in Light Mode --- */
+html.light header {
+  background-color: #ffffff !important;
+  border-bottom-color: #e2e8f0 !important;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.04) !important;
+}
+
+/* --- Main Content --- */
+html.light main {
+  background-color: #f8fafc !important;
+}
+
+/* --- Tables & Lists across all pages --- */
+html.light table {
+  background-color: #ffffff !important;
+}
+
+html.light thead,
+html.light th {
+  background-color: #f8fafc !important;
+  color: #475569 !important;
+  border-bottom-color: #e2e8f0 !important;
+}
+
+html.light tbody tr {
+  background-color: #ffffff !important;
+}
+
+html.light tbody tr:hover,
+html.light [class*="hover:bg-slate-800"]:hover,
+html.light [class*="hover:bg-slate-900"]:hover {
+  background-color: #f8fafc !important;
+}
+
+html.light td {
+  color: #1e293b !important;
+  border-color: #f1f5f9 !important;
+}
+
+/* Dividers & Borders */
+html.light [class*="border-slate-800"],
+html.light [class*="border-slate-700"],
+html.light [class*="border-slate-900"],
+html.light [class*="divide-slate-800"],
+html.light [class*="divide-slate-700"] {
+  border-color: #e2e8f0 !important;
+}
+
+html.light [class*="border-slate-600"] {
+  border-color: #cbd5e1 !important;
+}
+
+/* --- Typography Overrides --- */
+html.light [class*="text-white"],
+html.light [class*="text-slate-100"] {
+  color: #0f172a !important;
+}
+
+html.light [class*="text-slate-200"] {
+  color: #1e293b !important;
+}
+
+html.light [class*="text-slate-300"] {
+  color: #334155 !important;
+}
+
+html.light [class*="text-slate-400"],
+html.light [class*="text-slate-500"] {
+  color: #64748b !important;
+}
+
+/* Hover typography */
+html.light [class*="hover:text-white"]:hover,
+html.light [class*="hover:text-slate-200"]:hover {
+  color: #0f172a !important;
+}
+
+/* --- Form Controls: Input, Select, Textarea --- */
+html.light input:not([type="checkbox"]):not([type="radio"]),
+html.light select,
+html.light textarea {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+  border-color: #cbd5e1 !important;
+}
+
+html.light input:focus,
+html.light select:focus,
+html.light textarea:focus {
+  border-color: #0284c7 !important;
+  box-shadow: 0 0 0 2px rgba(2, 132, 199, 0.15) !important;
+}
+
+html.light select option {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+}
+
+html.light input::placeholder,
+html.light textarea::placeholder {
+  color: #94a3b8 !important;
+}
+
+/* Checkbox and Radio controls */
+html.light input[type="checkbox"],
+html.light input[type="radio"] {
+  background-color: #ffffff !important;
+  border-color: #cbd5e1 !important;
+}
+
+/* --- Chips, Badges & Pills in Light Mode --- */
+/* Cyan chips */
+html.light [class*="bg-cyan-500/10"],
+html.light [class*="bg-cyan-500/20"] {
+  background-color: #ecfeff !important;
+  color: #0e7490 !important;
+  border-color: #a5f3fc !important;
+}
+
+/* Emerald chips */
+html.light [class*="bg-emerald-500/10"],
+html.light [class*="bg-emerald-500/20"] {
+  background-color: #ecfdf5 !important;
+  color: #047857 !important;
+  border-color: #a7f3d0 !important;
+}
+
+/* Amber chips */
+html.light [class*="bg-amber-500/10"],
+html.light [class*="bg-amber-500/20"] {
+  background-color: #fffbeb !important;
+  color: #b45309 !important;
+  border-color: #fde68a !important;
+}
+
+/* Brand / Sky chips */
+html.light [class*="bg-brand-500/10"],
+html.light [class*="bg-brand-500/20"] {
+  background-color: #f0f9ff !important;
+  color: #0369a1 !important;
+  border-color: #bae6fd !important;
+}
+
+/* Purple / Indigo chips */
+html.light [class*="bg-purple-500/10"],
+html.light [class*="bg-purple-500/20"] {
+  background-color: #faf5ff !important;
+  color: #6b21a8 !important;
+  border-color: #e9d5ff !important;
+}
+html.light [class*="bg-indigo-500/10"],
+html.light [class*="bg-indigo-500/20"] {
+  background-color: #eef2ff !important;
+  color: #3730a3 !important;
+  border-color: #c7d2fe !important;
+}
+
+/* --- Modals, Dialogs & Drawers --- */
+html.light [role="dialog"] {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+  border-color: #e2e8f0 !important;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1) !important;
+}
+
+/* --- Card Shadows --- */
+html.light [class*="shadow-xl"],
+html.light [class*="shadow-lg"],
+html.light [class*="shadow-2xl"],
+html.light [class*="shadow-md"] {
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05) !important;
+}
+
+/* --- Secondary Action Buttons --- */
+html.light button[class*="bg-slate-800"] {
+  background-color: #f1f5f9 !important;
+  color: #334155 !important;
+  border-color: #cbd5e1 !important;
+}
+html.light button[class*="bg-slate-800"]:hover {
+  background-color: #e2e8f0 !important;
+  color: #0f172a !important;
+}
+
+/* Custom scrollbars for light mode */
+html.light ::-webkit-scrollbar-track {
+  background: #f1f5f9;
+}
+html.light ::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+}
+html.light ::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* Dark scrollbars (default) */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
 }
-
 ::-webkit-scrollbar-track {
   background: #0f172a;
 }
-
 ::-webkit-scrollbar-thumb {
   background: #334155;
   border-radius: 9999px;
 }
-
 ::-webkit-scrollbar-thumb:hover {
   background: #475569;
 }

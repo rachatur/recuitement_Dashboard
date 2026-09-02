@@ -14,14 +14,14 @@ export const Badge: React.FC<BadgeProps> = ({
   const sizeClasses = size === 'sm' ? 'px-2 py-0.5 text-xs' : 'px-2.5 py-1 text-sm';
 
   const variantClasses = {
-    default: 'bg-slate-800 text-slate-300 border-slate-700',
-    success: 'bg-emerald-950/70 text-emerald-300 border-emerald-800/60',
-    warning: 'bg-amber-950/70 text-amber-300 border-amber-800/60',
-    danger: 'bg-rose-950/70 text-rose-300 border-rose-800/60',
-    info: 'bg-sky-950/70 text-sky-300 border-sky-800/60',
-    purple: 'bg-purple-950/70 text-purple-300 border-purple-800/60',
-    indigo: 'bg-indigo-950/70 text-indigo-300 border-indigo-800/60',
-    amber: 'bg-amber-900/50 text-amber-200 border-amber-700/50',
+    default: 'bg-slate-100 text-slate-700 border-slate-300 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700',
+    success: 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/70 dark:text-emerald-300 dark:border-emerald-800/60',
+    warning: 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/70 dark:text-amber-300 dark:border-amber-800/60',
+    danger: 'bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/70 dark:text-rose-300 dark:border-rose-800/60',
+    info: 'bg-sky-50 text-sky-700 border-sky-200 dark:bg-sky-950/70 dark:text-sky-300 dark:border-sky-800/60',
+    purple: 'bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-950/70 dark:text-purple-300 dark:border-purple-800/60',
+    indigo: 'bg-indigo-50 text-indigo-700 border-indigo-200 dark:bg-indigo-950/70 dark:text-indigo-300 dark:border-indigo-800/60',
+    amber: 'bg-amber-50 text-amber-800 border-amber-200 dark:bg-amber-900/50 dark:text-amber-200 dark:border-amber-700/50',
   }[variant];
 
   return (

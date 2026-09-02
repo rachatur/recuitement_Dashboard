@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { NotificationProvider } from './contexts/NotificationContext';
+import { ThemeProvider } from './contexts/ThemeContext';
 import { AppLayout } from './components/layout/AppLayout';
 import { LoginPage } from './pages/LoginPage';
 import { DashboardPage } from './pages/DashboardPage';
@@ -176,10 +177,12 @@ const AppContent: React.FC = () => {
 
 export default function App() {
   return (
-    <AuthProvider>
-      <NotificationProvider>
-        <AppContent />
-      </NotificationProvider>
-    </AuthProvider>
+    <ThemeProvider>
+      <AuthProvider>
+        <NotificationProvider>
+          <AppContent />
+        </NotificationProvider>
+      </AuthProvider>
+    </ThemeProvider>
   );
 }

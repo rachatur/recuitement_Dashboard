@@ -926,7 +926,7 @@ export const CandidatesPage: React.FC<CandidatesPageProps> = ({ onViewCandidateP
               ) : (
                 candidates.map((cand) => {
                   const isChecked = selectedCandidateIds.includes(cand.id);
-                  const exactPosition = cand.position || cand.current_designation || 'Software Engineer';
+                  const exactPosition = cand.position || cand.current_designation || 'Candidate';
                   const primSkills = cand.primary_skills || cand.bench_primary_skills || (cand.skills ? cand.skills.slice(0, 3) : []);
                   const secSkills = cand.secondary_skills || cand.bench_secondary_skills || (cand.skills ? cand.skills.slice(3) : []);
 

@@ -1,5 +1,6 @@
 from typing import List, Optional
-from fastapi import APIRouter, Depends, HTTPException, status, Request
+import base64
+from fastapi import APIRouter, Depends, HTTPException, status, Request, UploadFile, File
 from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.core.security import get_password_hash
@@ -128,4 +129,46 @@ def update_user(
         new_value={"email": user.email, "role": str(user.role), "is_active": user.is_active}
     )
 
+    return user
+
+@router.post("/upload-avatar")
+async def upload_avatar(
+    file: UploadFile = File(...),
+    current_user: User = Depends(get_current_active_user)
+):
+    """Upload or attach profile photo, returns data URL."""
+    if not file.content_type or not file.content_type.startswith("image/"):
+        raise HTTPException(status_code=400, detail="Uploaded file must be an image (PNG, JPG, JPEG, WEBP, GIF)")
+    
+    contents = await file.read()
+    if len(contents) > 5 * 1024 * 1024:
+        raise HTTPException(status_code=400, detail="Image size cannot exceed 5MB")
+    
+    b64_encoded = base64.b64encode(contents).decode("utf-8")
+    data_url = f"data:{file.content_type};base64,{b64_encoded}"
+    return {"avatar_url": data_url}
+
+@router.post("/{user_id}/avatar", response_model=UserResponse)
+async def update_user_avatar(
+    user_id: str,
+    file: UploadFile = File(...),
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    """Upload and set avatar for a specific user."""
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+        
+    if not file.content_type or not file.content_type.startswith("image/"):
+        raise HTTPException(status_code=400, detail="Uploaded file must be an image (PNG, JPG, JPEG, WEBP, GIF)")
+    
+    contents = await file.read()
+    if len(contents) > 5 * 1024 * 1024:
+        raise HTTPException(status_code=400, detail="Image size cannot exceed 5MB")
+    
+    b64_encoded = base64.b64encode(contents).decode("utf-8")
+    user.avatar_url = f"data:{file.content_type};base64,{b64_encoded}"
+    db.commit()
+    db.refresh(user)
     return user
