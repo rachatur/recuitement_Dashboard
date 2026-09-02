@@ -1,4 +1,5 @@
-services: postgres:
+services:
+  postgres:
     image: postgres:17-alpine
     container_name: recruitflow_postgres
     restart: always
